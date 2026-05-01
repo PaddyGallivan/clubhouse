@@ -53,3 +53,23 @@ export const api = {
   // Me
   getMe: () => req('/me'),
 }
+
+// Chat
+export const chatApi = {
+  getChat: (slug, teamId) => api.getTeam ? req(`/clubs/${slug}/chat?team=${teamId}`) : req(`/clubs/${slug}/chat?team=${teamId}`),
+  sendChat: (slug, teamId, message) => req(`/clubs/${slug}/chat`, { method: 'POST', body: JSON.stringify({ team_id: teamId, message }) }),
+}
+Object.assign(api, {
+  getChat: (slug, teamId) => req(`/clubs/${slug}/chat?team=${teamId}`),
+  sendChat: (slug, teamId, message) => req(`/clubs/${slug}/chat`, { method: 'POST', body: JSON.stringify({ team_id: teamId, message }) }),
+  getBFTally: (slug, round) => req(`/clubs/${slug}/bf-tally?round=${round}`),
+  getMyBFVote: (slug, round) => req(`/clubs/${slug}/bf-vote?round=${round}`),
+  submitBFVote: (slug, round, votes) => req(`/clubs/${slug}/bf-vote`, { method: 'POST', body: JSON.stringify({ round, ...votes }) }),
+  updateScore: (slug, fixtureId, score_us, score_them) => req(`/clubs/${slug}/fixtures/${fixtureId}/score`, { method: 'POST', body: JSON.stringify({ score_us, score_them }) }),
+  submitFeedback: (slug, fixtureId, data) => req(`/clubs/${slug}/fixtures/${fixtureId}/feedback`, { method: 'POST', body: JSON.stringify(data) }),
+  getPlayerProfile: (slug, userId) => req(`/clubs/${slug}/player/${userId}`),
+  getEvents: (slug) => req(`/clubs/${slug}/events`),
+  rsvpEvent: (slug, eventId, status) => req(`/clubs/${slug}/events/${eventId}/rsvp`, { method: 'POST', body: JSON.stringify({ status }) }),
+  addFixture: (slug, data) => req(`/clubs/${slug}/fixtures`, { method: 'POST', body: JSON.stringify(data) }),
+  addAnnouncement: (slug, data) => req(`/clubs/${slug}/announcements`, { method: 'POST', body: JSON.stringify(data) }),
+})
