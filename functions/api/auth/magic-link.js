@@ -9,7 +9,7 @@ export async function onRequestPost({ request, env }) {
     const expires = new Date(Date.now() + 15 * 60 * 1000).toISOString()
 
     await env.DB.prepare(
-      'INSERT INTO magic_links (email, token, club_slug, expires_at) VALUES (?, ?, ?, ?)'
+      'INSERT INTO ch_magic_links (email, token, club_slug, expires_at) VALUES (?, ?, ?, ?)'
     ).bind(email, token, club_slug || null, expires).run()
 
     const baseUrl = env.APP_URL || 'https://clubhouse.pages.dev'
