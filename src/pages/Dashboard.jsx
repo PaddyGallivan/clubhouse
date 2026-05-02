@@ -24,73 +24,79 @@ export default function Dashboard() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner /></div>
 
-  const role = me?.memberships?.find(m => m.club_slug === slug)?.role || 'supporter'
+  const role = me?.memberships?.find(m => m.club_slug === slug)?.role || 'player'
+  const myUserId = me?.id
+
+  const playerCards = [
+    { to: `/${slug}/fixtures`, icon: '📅', title: 'Fixtures', desc: 'Full season schedule & results' },
+    { to: `/${slug}/voting`, icon: '🏆', title: 'B&F Voting', desc: 'Cast your 3-2-1 votes' },
+    { to: `/${slug}/chat`, icon: '💬', title: 'Team Chat', desc: 'Talk to your teammates' },
+    { to: `/${slug}/matchday`, icon: '⚽', title: 'Match Day', desc: 'Live scores & player feedback' },
+    { to: `/${slug}/events`, icon: '🎉', title: 'Events', desc: 'Club social calendar' },
+    { to: `/${slug}/teams`, icon: '🎽', title: 'My Team', desc: 'Squad & team info' },
+    { to: `/${slug}/news`, icon: '📰', title: 'News', desc: 'Latest club announcements' },
+    { to: myUserId ? `/${slug}/player/${myUserId}` : `/${slug}/roster`, icon: '👤', title: 'My Profile', desc: 'Stats, goals & milestones' },
+  ]
+
+  const coachCards = [
+    { to: `/${slug}/matchday`, icon: '📋', title: 'Match Day', desc: 'Score, team sheet & feedback' },
+    { to: `/${slug}/roster`, icon: '✅', title: 'Roster', desc: 'Full player list' },
+    { to: `/${slug}/teams`, icon: '🎽', title: 'Teams', desc: 'Squad management' },
+    { to: `/${slug}/chat`, icon: '📣', title: 'Team Chat', desc: 'Message your squad' },
+    { to: `/${slug}/fixtures`, icon: '📅', title: 'Fixtures', desc: 'Season schedule' },
+    { to: `/${slug}/events`, icon: '🎉', title: 'Events', desc: 'Club calendar' },
+  ]
+
+  const committeeCards = [
+    { to: `/${slug}/admin`, icon: '⚙️', title: 'Admin Panel', desc: 'Manage the club' },
+    { to: `/${slug}/roster`, icon: '👥', title: 'Members', desc: 'Player registrations' },
+    { to: `/${slug}/fixtures`, icon: '📅', title: 'Fixtures', desc: 'Edit the season schedule' },
+    { to: `/${slug}/sponsors`, icon: '🤝', title: 'Sponsors', desc: 'Manage sponsor listings' },
+    { to: `/${slug}/events`, icon: '🎉', title: 'Events', desc: 'Club calendar & RSVPs' },
+    { to: `/${slug}/news`, icon: '📣', title: 'Post News', desc: 'Club-wide announcements' },
+  ]
+
+  const cards = role === 'coach' ? coachCards : role === 'committee' ? committeeCards : playerCards
 
   return (
     <ClubLayout club={club}>
       <div className="mb-8">
-        <h1 className="text-2xl font-black text-gray-900">Welcome back{me?.name ? `, ${me.name.split(' ')[0]}` : ''}! 👋</h1>
+        <h1 className="text-2xl font-black text-gray-900">
+          Welcome back{me?.name ? `, ${me.name.split(' ')[0]}` : ''}! 👋
+        </h1>
         <p className="text-gray-500 mt-1 capitalize">{role} · {club?.name}</p>
       </div>
 
-      <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-5">
-        {/* Quick actions based on role */}
-        {role === 'coach' && (
-          <>
-            <DashCard icon="📋" title="Set lineup" desc="Pick your team for the next game" />
-            <DashCard icon="✅" title="Mark attendance" desc="Record who turned up to training" />
-            <DashCard icon="📣" title="Message your team" desc="Send a note to the whole squad" />
-            <DashCard icon="📝" title="Player notes" desc="Track development per player" />
-          </>
-        )}
-        {role === 'committee' && (
-          <>
-            <DashCard icon="👥" title="Members" desc="Manage registrations & renewals" />
-            <DashCard icon="💰" title="Finances" desc="Fees, payments, expenses" />
-            <DashCard icon="📅" title="Fixtures" desc="Edit the season schedule" />
-            <DashCard icon="🤝" title="Sponsors" desc="Manage sponsor contracts" />
-            <DashCard icon="🛡️" title="Compliance" desc="WWCC expiry tracker" />
-          </>
-        )}
-        {(role === 'player' || role === 'supporter') && (
-          <>
-            <Link to={`/${slug}/fixtures`}><DashCard icon="🏆" title="Fixtures" desc="See the full season schedule" /></Link>
-            <Link to={`/${slug}/teams`}><DashCard icon="🎽" title="My team" desc="Squad list & comms" /></Link>
-            <Link to={`/${slug}/news`}><DashCard icon="📣" title="News" desc="Latest from the club" /></Link>
-          </>
-        )}
-        {role === 'parent' && (
-          <>
-            <DashCard icon="👶" title="My child" desc="Profile, payments, season" />
-            <DashCard icon="🚗" title="Transport" desc="Coordinate pickups & dropoffs" />
-            <Link to={`/${slug}/fixtures`}><DashCard icon="📅" title="Fixtures" desc="When & where is the next game?" /></Link>
-          </>
-        )}
-        {role === 'sponsor' && (
-          <>
-            <Link to={`/${slug}/sponsors`}><DashCard icon="🏅" title="Your listing" desc="Update logo & link" /></Link>
-            <DashCard icon="📊" title="Exposure stats" desc="Views, clicks, impressions" />
-          </>
-        )}
-
-        {/* Universal */}
-        <Link to={`/${slug}/news`}><DashCard icon="🔔" title="Announcements" desc="Club-wide news" /></Link>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8">
+        {cards.map(({ to, icon, title, desc }) => (
+          <Link key={to} to={to}
+            className="card hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer block">
+            <div className="text-3xl mb-2">{icon}</div>
+            <div className="font-bold text-gray-900 text-sm">{title}</div>
+            <div className="text-xs text-gray-500 mt-0.5 leading-snug">{desc}</div>
+          </Link>
+        ))}
       </div>
 
-      <div className="mt-8 card bg-gray-50">
-        <p className="text-sm text-gray-500">Signed in as <strong>{me?.email}</strong></p>
-        <p className="text-xs text-gray-400 mt-0.5">More features coming soon — this is the v1 dashboard.</p>
+      {/* Member info card */}
+      <div className="card bg-gray-50 border-gray-200 flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <p className="text-sm font-semibold text-gray-700">{me?.name || 'Member'}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{me?.email}</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {myUserId && (
+            <Link to={`/${slug}/player/${myUserId}`}
+              className="text-xs font-semibold club-text hover:underline px-3 py-1.5 border club-border rounded-lg">
+              View my profile
+            </Link>
+          )}
+          <Link to={`/${slug}/profile`}
+            className="text-xs font-semibold text-gray-500 hover:text-gray-700 px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-100">
+            Edit profile
+          </Link>
+        </div>
       </div>
     </ClubLayout>
-  )
-}
-
-function DashCard({ icon, title, desc }) {
-  return (
-    <div className="card hover:shadow-md transition-shadow cursor-pointer">
-      <div className="text-3xl mb-2">{icon}</div>
-      <div className="font-bold text-gray-900 text-sm">{title}</div>
-      <div className="text-xs text-gray-500 mt-0.5">{desc}</div>
-    </div>
   )
 }
