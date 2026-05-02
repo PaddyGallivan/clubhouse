@@ -16,15 +16,26 @@ export default function BFVoting() {
   const [submitted, setSubmitted] = useState(false)
   const [tally, setTally] = useState([])
   const [loading, setLoading] = useState(true)
+  const [rosterLoading, setRosterLoading] = useState(true)
 
+  // Load fixtures independently — drives the round selector
   useEffect(() => {
-    Promise.all([api.getFixtures(slug), api.getRoster(slug)]).then(([fd, rd]) => {
-      const played = (fd.fixtures || []).filter(f => f.status === 'played')
-      setFixtures(played)
-      if (played.length) setActiveRound(played[played.length - 1].round)
-      setRoster(rd.roster || [])
-      setLoading(false)
-    }).catch(() => setLoading(false))
+    api.getFixtures(slug)
+      .then(fd => {
+        const played = (fd.fixtures || []).filter(f => f.status === 'played')
+        setFixtures(played)
+        if (played.length) setActiveRound(played[played.length - 1].round)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [slug])
+
+  // Load roster independently — powers the vote picker
+  useEffect(() => {
+    api.getRoster(slug)
+      .then(rd => setRoster(rd.roster || []))
+      .catch(() => {})
+      .finally(() => setRosterLoading(false))
   }, [slug])
 
   useEffect(() => {
@@ -55,7 +66,7 @@ export default function BFVoting() {
   return (
     <ClubLayout club={club}>
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-gray-900">Best & Fairest Voting</h1>
+        <h1 className="text-2xl font-black text-gray-900">Best &amp; Fairest Voting</h1>
         <p className="text-gray-500 mt-1">3-2-1 votes after each game</p>
       </div>
 
@@ -93,6 +104,10 @@ export default function BFVoting() {
               <div className="text-center py-6 text-gray-400 text-sm">
                 <Link to={`/${slug}/login`} className="club-text font-semibold">Log in</Link> to vote
               </div>
+            ) : rosterLoading ? (
+              <div className="text-center py-6"><LoadingSpinner /></div>
+            ) : roster.length === 0 ? (
+              <div className="text-center py-6 text-gray-400 text-sm">No players in roster yet.</div>
             ) : (
               <>
                 {[{ key: 'v1', label: '3 votes', color: 'bg-yellow-100 border-yellow-400' },
@@ -107,7 +122,7 @@ export default function BFVoting() {
                         return (
                           <button key={p.id} onClick={() => pickPlayer(key, p.id)} disabled={taken}
                             className={`text-left px-3 py-2 rounded-lg text-sm border-2 transition-all ${sel ? color + ' font-bold' : 'border-transparent bg-gray-50 hover:bg-gray-100'} ${taken ? 'opacity-30 cursor-not-allowed' : ''}`}>
-                            {p.name} {p.jumper_number ? `#${p.jumper_number}` : ''}
+                            #{p.jumper_number} {p.name}
                           </button>
                         )
                       })}
@@ -121,7 +136,7 @@ export default function BFVoting() {
             )}
           </div>
 
-          {/* Tally */}
+          {/* Season tally */}
           <div className="card">
             <h2 className="font-bold text-gray-900 mb-4">Season tally</h2>
             {tally.length === 0 ? (
