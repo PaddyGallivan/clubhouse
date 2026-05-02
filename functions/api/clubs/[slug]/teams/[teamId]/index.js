@@ -8,7 +8,7 @@ export async function onRequestGet({ params, env }) {
   if (!teams.length) return new Response(JSON.stringify({ error: 'Team not found' }), { status: 404 })
   const { results: members } = await env.DB.prepare(
     `SELECT tm.*, u.name, u.avatar_url FROM ch_team_members tm
-     JOIN users u ON tm.user_id = u.id
+     JOIN ch_users u ON tm.user_id = u.id
      WHERE tm.team_id = ? ORDER BY tm.jumper_number ASC`
   ).bind(teamId).all()
   return Response.json({ team: { ...teams[0], members } })
