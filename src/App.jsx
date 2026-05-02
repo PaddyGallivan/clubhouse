@@ -16,6 +16,7 @@ import MatchDay from './pages/MatchDay.jsx'
 import PlayerProfile from './pages/PlayerProfile.jsx'
 import Events from './pages/Events.jsx'
 import Admin from './pages/Admin.jsx'
+import Profile from './pages/Profile.jsx'
 import NotFound from './pages/NotFound.jsx'
 
 export default function App() {
@@ -38,7 +39,4 @@ export default function App() {
       <Route path="/:slug/login" element={<Login />} />
       <Route path="/:slug/verify" element={<Verify />} />
       <Route path="/:slug/dashboard" element={<Dashboard />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  )
-}
+      <Route path="/:slug/
