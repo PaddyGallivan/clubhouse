@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import Landing from './pages/Landing.jsx'
 import Login from './pages/Login.jsx'
 import Verify from './pages/Verify.jsx'
@@ -8,7 +8,7 @@ import Roster from './pages/Roster.jsx'
 import Teams from './pages/Teams.jsx'
 import Chat from './pages/Chat.jsx'
 import MatchDay from './pages/MatchDay.jsx'
-import BestAndFairest from './pages/BestAndFairest.jsx'
+import BFVoting from './pages/BFVoting.jsx'
 import PlayerProfile from './pages/PlayerProfile.jsx'
 import Events from './pages/Events.jsx'
 import Admin from './pages/Admin.jsx'
@@ -26,7 +26,7 @@ export default function App() {
       <Route path="/:slug/teams" element={<Teams />} />
       <Route path="/:slug/chat" element={<Chat />} />
       <Route path="/:slug/matchday" element={<MatchDay />} />
-      <Route path="/:slug/bf" element={<BestAndFairest />} />
+      <Route path="/:slug/bf" element={<BFVoting />} />
       <Route path="/:slug/player/:userId" element={<PlayerProfile />} />
       <Route path="/:slug/events" element={<Events />} />
       <Route path="/:slug/admin" element={<Admin />} />
