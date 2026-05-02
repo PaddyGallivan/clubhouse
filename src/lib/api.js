@@ -1,5 +1,3 @@
-// API client — talks to CF Pages Functions at /functions/api/
-
 const BASE = '/api'
 
 async function req(path, opts = {}) {
@@ -19,47 +17,16 @@ async function req(path, opts = {}) {
 }
 
 export const api = {
-  // Club
   getClub: (slug) => req(`/clubs/${slug}`),
-
-  // Fixtures
   getFixtures: (slug) => req(`/clubs/${slug}/fixtures`),
-
-  // Roster
   getRoster: (slug) => req(`/clubs/${slug}/roster`),
-
-  // Teams
   getTeams: (slug) => req(`/clubs/${slug}/teams`),
   getTeam: (slug, teamId) => req(`/clubs/${slug}/teams/${teamId}`),
-
-  // Announcements
   getAnnouncements: (slug) => req(`/clubs/${slug}/announcements`),
-
-  // Sponsors
   getSponsors: (slug) => req(`/clubs/${slug}/sponsors`),
-
-  // Auth
-  sendMagicLink: (email, slug) =>
-    req('/auth/magic-link', {
-      method: 'POST',
-      body: JSON.stringify({ email, club_slug: slug }),
-    }),
-  verifyMagicLink: (token) =>
-    req('/auth/verify', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    }),
-
-  // Me
+  sendMagicLink: (email, slug) => req('/auth/magic-link', { method: 'POST', body: JSON.stringify({ email, club_slug: slug }) }),
+  verifyMagicLink: (token) => req('/auth/verify', { method: 'POST', body: JSON.stringify({ token }) }),
   getMe: () => req('/me'),
-}
-
-// Chat
-export const chatApi = {
-  getChat: (slug, teamId) => api.getTeam ? req(`/clubs/${slug}/chat?team=${teamId}`) : req(`/clubs/${slug}/chat?team=${teamId}`),
-  sendChat: (slug, teamId, message) => req(`/clubs/${slug}/chat`, { method: 'POST', body: JSON.stringify({ team_id: teamId, message }) }),
-}
-Object.assign(api, {
   getChat: (slug, teamId) => req(`/clubs/${slug}/chat?team=${teamId}`),
   sendChat: (slug, teamId, message) => req(`/clubs/${slug}/chat`, { method: 'POST', body: JSON.stringify({ team_id: teamId, message }) }),
   getBFTally: (slug, round) => req(`/clubs/${slug}/bf-tally?round=${round}`),
@@ -72,4 +39,12 @@ Object.assign(api, {
   rsvpEvent: (slug, eventId, status) => req(`/clubs/${slug}/events/${eventId}/rsvp`, { method: 'POST', body: JSON.stringify({ status }) }),
   addFixture: (slug, data) => req(`/clubs/${slug}/fixtures`, { method: 'POST', body: JSON.stringify(data) }),
   addAnnouncement: (slug, data) => req(`/clubs/${slug}/announcements`, { method: 'POST', body: JSON.stringify(data) }),
-})
+  // Fees
+  getFees: (slug) => req(`/clubs/${slug}/fees`),
+  getMyFees: (slug) => req(`/clubs/${slug}/fees/my`),
+  addFeeType: (slug, data) => req(`/clubs/${slug}/fees`, { method: 'POST', body: JSON.stringify(data) }),
+  markFeePaid: (slug, feeTypeId, data) => req(`/clubs/${slug}/fees/${feeTypeId}/pay`, { method: 'POST', body: JSON.stringify(data) }),
+  // Availability
+  getAvailability: (slug, fixtureId) => req(`/clubs/${slug}/fixtures/${fixtureId}/availability`),
+  setAvailability: (slug, fixtureId, status, note) => req(`/clubs/${slug}/fixtures/${fixtureId}/availability`, { method: 'POST', body: JSON.stringify({ status, note }) }),
+}
