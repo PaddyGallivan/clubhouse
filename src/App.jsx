@@ -39,4 +39,8 @@ export default function App() {
       <Route path="/:slug/login" element={<Login />} />
       <Route path="/:slug/verify" element={<Verify />} />
       <Route path="/:slug/dashboard" element={<Dashboard />} />
-      <Route path="/:slug/
+      <Route path="/:slug/profile" element={<Profile />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  )
+}
