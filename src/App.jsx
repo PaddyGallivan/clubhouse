@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Landing from './pages/Landing.jsx'
 import Login from './pages/Login.jsx'
 import Verify from './pages/Verify.jsx'
@@ -16,24 +16,21 @@ import Training from './pages/Training.jsx'
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/:slug/login" element={<Login />} />
-        <Route path="/:slug/verify" element={<Verify />} />
-        <Route path="/:slug/dashboard" element={<Dashboard />} />
-        <Route path="/:slug/fixtures" element={<Fixtures />} />
-        <Route path="/:slug/roster" element={<Roster />} />
-        <Route path="/:slug/teams" element={<Teams />} />
-        <Route path="/:slug/chat" element={<Chat />} />
-        <Route path="/:slug/matchday" element={<MatchDay />} />
-        <Route path="/:slug/bf" element={<BestAndFairest />} />
-        <Route path="/:slug/player/:userId" element={<PlayerProfile />} />
-        <Route path="/:slug/events" element={<Events />} />
-        <Route path="/:slug/admin" element={<Admin />} />
-        <Route path="/:slug/training" element={<Training />} />
-        <Route path="/:slug" element={<Navigate to="/:slug/dashboard" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/:slug/login" element={<Login />} />
+      <Route path="/:slug/verify" element={<Verify />} />
+      <Route path="/:slug/dashboard" element={<Dashboard />} />
+      <Route path="/:slug/fixtures" element={<Fixtures />} />
+      <Route path="/:slug/roster" element={<Roster />} />
+      <Route path="/:slug/teams" element={<Teams />} />
+      <Route path="/:slug/chat" element={<Chat />} />
+      <Route path="/:slug/matchday" element={<MatchDay />} />
+      <Route path="/:slug/bf" element={<BestAndFairest />} />
+      <Route path="/:slug/player/:userId" element={<PlayerProfile />} />
+      <Route path="/:slug/events" element={<Events />} />
+      <Route path="/:slug/admin" element={<Admin />} />
+      <Route path="/:slug/training" element={<Training />} />
+    </Routes>
   )
 }
