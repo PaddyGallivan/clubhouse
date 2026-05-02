@@ -4,7 +4,7 @@ import ClubLayout from '../components/ClubLayout.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import useClub from '../lib/useClub.js'
 import { api } from '../lib/api.js'
-import { isLoggedIn, getUser } from '../lib/auth.js'
+import { isLoggedIn, getUser, clearToken } from '../lib/auth.js'
 
 export default function Admin() {
   const { slug } = useParams()
@@ -15,49 +15,48 @@ export default function Admin() {
   const [roster, setRoster] = useState([])
   const [announcements, setAnnouncements] = useState([])
   const [sponsors, setSponsors] = useState([])
-  const [feeTypes, setFeeTypes] = useState([])
+  const [fees, setFees] = useState([])
   const [feeRecords, setFeeRecords] = useState([])
-  const [feeTotals, setFeeTotals] = useState({ totalOwing: 0, totalCollected: 0 })
   const [availability, setAvailability] = useState({})
   const [loading, setLoading] = useState(true)
+  const me = getUser()
 
   useEffect(() => {
-    if (!isLoggedIn()) { navigate('/' + slug + '/login'); return }
+    if (!isLoggedIn()) { navigate(`/${slug}/login`); return }
     Promise.all([
-      api.getFixtures(slug),
-      api.getRoster(slug),
-      api.getAnnouncements(slug),
-      api.getSponsors(slug),
-      api.getFees(slug),
-    ]).then(([fd, rd, ad, sd, feesD]) => {
+      api.getFixtures(slug), api.getRoster(slug),
+      api.getAnnouncements(slug), api.getSponsors(slug),
+      api.getFees(slug).catch(() => ({ fee_types: [], records: [] })),
+    ]).then(([fd, rd, ad, sd, feesData]) => {
       setFixtures(fd.fixtures || [])
       setRoster(rd.roster || [])
       setAnnouncements(ad.announcements || [])
       setSponsors(sd.sponsors || [])
-      setFeeTypes(feesD.feeTypes || [])
-      setFeeRecords(feesD.records || [])
-      setFeeTotals({ totalOwing: feesD.totalOwing || 0, totalCollected: feesD.totalCollected || 0 })
+      setFees(feesData.fee_types || [])
+      setFeeRecords(feesData.records || [])
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [slug])
 
-  // Load availability for upcoming fixtures when tab switches
+  // Load availability data when tab changes
   useEffect(() => {
     if (tab !== 'availability') return
     const upcoming = fixtures.filter(f => f.status === 'upcoming')
     Promise.all(upcoming.map(f =>
-      api.getAvailability(slug, f.id).then(d => ({ id: f.id, ...d }))
+      api.getAvailability(slug, f.id).then(d => ({ id: f.id, data: d })).catch(() => null)
     )).then(results => {
       const map = {}
-      results.forEach(r => { map[r.id] = r })
+      results.filter(Boolean).forEach(r => { map[r.id] = r.data })
       setAvailability(map)
-    }).catch(() => {})
+    })
   }, [tab, fixtures])
 
+  // New fixture form
   const [newFixture, setNewFixture] = useState({ round: '', opponent_name: '', date: '', time: '', venue: '', is_home: 1 })
   const [savingFixture, setSavingFixture] = useState(false)
   async function addFixture(e) {
-    e.preventDefault(); setSavingFixture(true)
+    e.preventDefault()
+    setSavingFixture(true)
     try {
       const d = await api.addFixture(slug, newFixture)
       setFixtures(f => [...f, d.fixture])
@@ -66,10 +65,12 @@ export default function Admin() {
     setSavingFixture(false)
   }
 
+  // New announcement form
   const [newPost, setNewPost] = useState({ title: '', body: '', pinned: 0 })
   const [savingPost, setSavingPost] = useState(false)
   async function addPost(e) {
-    e.preventDefault(); setSavingPost(true)
+    e.preventDefault()
+    setSavingPost(true)
     try {
       const d = await api.addAnnouncement(slug, newPost)
       setAnnouncements(a => [d.announcement, ...a])
@@ -78,31 +79,45 @@ export default function Admin() {
     setSavingPost(false)
   }
 
-  const [newFeeType, setNewFeeType] = useState({ name: '', amount: '', season: '', due_date: '', description: '' })
+  // Fee type form
+  const [newFee, setNewFee] = useState({ name: '', amount: '', season: '', due_date: '', description: '' })
   const [savingFee, setSavingFee] = useState(false)
   async function addFeeType(e) {
-    e.preventDefault(); setSavingFee(true)
+    e.preventDefault()
+    setSavingFee(true)
     try {
-      const d = await api.addFeeType(slug, newFeeType)
-      setFeeTypes(f => [...f, d.feeType])
-      setNewFeeType({ name: '', amount: '', season: '', due_date: '', description: '' })
+      const d = await api.addFeeType(slug, newFee)
+      setFees(f => [...f, d.fee_type])
+      setNewFee({ name: '', amount: '', season: '', due_date: '', description: '' })
     } catch (err) { alert(err.message) }
     setSavingFee(false)
   }
 
   async function markPaid(feeTypeId, userId) {
     try {
-      await api.markFeePaid(slug, feeTypeId, { user_id: userId, status: 'paid', amount_paid: feeTypes.find(f => f.id === feeTypeId)?.amount })
-      setFeeRecords(rs => rs.map(r => r.fee_type_id === feeTypeId && r.user_id === userId ? { ...r, status: 'paid', amount_paid: r.amount_due, paid_at: new Date().toISOString() } : r))
+      await api.markFeePaid(slug, feeTypeId, { user_id: userId, status: 'paid', method: 'admin' })
+      const d = await api.getFees(slug)
+      setFeeRecords(d.records || [])
     } catch (err) { alert(err.message) }
   }
 
-  const TABS = [['fixtures','📅 Fixtures'],['roster','👥 Roster'],['posts','📣 Posts'],['fees','💳 Fees'],['availability','📋 Availability'],['sponsors','🤝 Sponsors']]
-
-  const statusBadge = (status) => {
-    const map = { played:'bg-green-100 text-green-700', upcoming:'bg-blue-50 text-blue-600', bye:'bg-gray-100 text-gray-500' }
-    return <span className={'text-xs px-2 py-0.5 rounded-full font-semibold ' + (map[status] || 'bg-gray-100 text-gray-500')}>{status}</span>
+  // Invite form
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState('player')
+  const [inviteSending, setInviteSending] = useState(false)
+  const [inviteSent, setInviteSent] = useState(null)
+  async function sendInvite(e) {
+    e.preventDefault()
+    setInviteSending(true)
+    try {
+      await api.invitePlayer(slug, inviteEmail, inviteRole)
+      setInviteSent(inviteEmail)
+      setInviteEmail('')
+    } catch (err) { alert(err.message) }
+    setInviteSending(false)
   }
+
+  const TABS = [['fixtures','📅 Fixtures'],['roster','👥 Roster'],['posts','📣 Posts'],['fees','💳 Fees'],['availability','📡 Availability'],['sponsors','🤝 Sponsors']]
 
   return (
     <ClubLayout club={club}>
@@ -111,13 +126,13 @@ export default function Admin() {
           <h1 className="text-2xl font-black text-gray-900">Admin Panel</h1>
           <p className="text-gray-400 text-sm mt-0.5">Manage {club?.name}</p>
         </div>
-        <Link to={'/' + slug + '/dashboard'} className="text-sm text-gray-400 hover:text-gray-600">← Dashboard</Link>
+        <Link to={`/${slug}/dashboard`} className="text-sm text-gray-400 hover:text-gray-600">← Dashboard</Link>
       </div>
 
-      <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl flex-wrap">
+      <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl w-fit flex-wrap">
         {TABS.map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
-            className={'px-4 py-2 rounded-lg text-sm font-semibold transition-colors ' + (tab === id ? 'bg-white shadow text-gray-900' : 'text-gray-500')}>
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === id ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>
             {label}
           </button>
         ))}
@@ -125,7 +140,7 @@ export default function Admin() {
 
       {loading ? <LoadingSpinner /> : (
         <>
-          {/* Fixtures */}
+          {/* Fixtures tab */}
           {tab === 'fixtures' && (
             <div className="space-y-5">
               <form onSubmit={addFixture} className="card">
@@ -146,6 +161,7 @@ export default function Admin() {
                   {savingFixture ? 'Adding...' : 'Add Fixture'}
                 </button>
               </form>
+
               <div className="card overflow-x-auto">
                 <h3 className="font-bold text-gray-800 mb-4">All Fixtures ({fixtures.length})</h3>
                 <table className="w-full text-sm">
@@ -158,10 +174,10 @@ export default function Admin() {
                         <td className="py-2 pr-4 font-bold">{f.round}</td>
                         <td className="py-2 pr-4">{f.opponent_name}</td>
                         <td className="py-2 pr-4 text-gray-500">{f.date || '–'}</td>
-                        <td className="py-2 pr-4 text-gray-500 text-xs">{f.venue || '–'}</td>
+                        <td className="py-2 pr-4 text-gray-500">{f.venue || '–'}</td>
                         <td className="py-2 pr-4">{f.is_home ? 'H' : 'A'}</td>
-                        <td className="py-2 pr-4 font-bold">{f.score_us != null ? f.score_us + '–' + f.score_them : '–'}</td>
-                        <td className="py-2 pr-4">{statusBadge(f.status)}</td>
+                        <td className="py-2 pr-4 font-bold">{f.score_us != null ? `${f.score_us}–${f.score_them}` : '–'}</td>
+                        <td className="py-2 pr-4"><span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${f.status==='played'?'bg-green-100 text-green-700':f.status==='upcoming'?'bg-blue-50 text-blue-600':'bg-gray-100 text-gray-500'}`}>{f.status}</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -170,28 +186,56 @@ export default function Admin() {
             </div>
           )}
 
-          {/* Roster */}
+          {/* Roster tab */}
           {tab === 'roster' && (
-            <div className="card">
-              <h3 className="font-bold text-gray-800 mb-4">Registered Players ({roster.length})</h3>
-              <div className="space-y-2">
-                {roster.map(p => (
-                  <div key={p.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                    <div className="flex items-center gap-3">
-                      <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-black text-gray-400">{p.jumper_number || '?'}</span>
-                      <div>
-                        <div className="text-sm font-semibold text-gray-800">{p.name}</div>
-                        {p.positions && <div className="text-xs text-gray-400">{p.positions}</div>}
-                      </div>
-                    </div>
-                    <Link to={'/' + slug + '/player/' + p.id} className="text-xs club-text font-semibold hover:underline">Profile →</Link>
+            <div className="space-y-5">
+              {/* Invite form */}
+              <form onSubmit={sendInvite} className="card">
+                <h3 className="font-bold text-gray-800 mb-1">Invite a Player</h3>
+                <p className="text-sm text-gray-400 mb-4">Send a magic-link invite. They'll be added to the club roster automatically when they click it.</p>
+                {inviteSent && (
+                  <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-sm text-green-700 font-semibold">
+                    ✅ Invite sent to {inviteSent}
                   </div>
-                ))}
+                )}
+                <div className="flex gap-3 flex-wrap">
+                  <input type="email" placeholder="player@email.com" value={inviteEmail}
+                    onChange={e => { setInviteEmail(e.target.value); setInviteSent(null) }}
+                    className="flex-1 min-w-48 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                  <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
+                    <option value="player">Player</option>
+                    <option value="admin">Admin</option>
+                    <option value="coach">Coach</option>
+                  </select>
+                  <button type="submit" disabled={inviteSending || !inviteEmail}
+                    className="club-bg text-white px-5 py-2 rounded-lg text-sm font-bold disabled:opacity-40">
+                    {inviteSending ? 'Sending...' : '✉️ Send Invite'}
+                  </button>
+                </div>
+              </form>
+
+              <div className="card">
+                <h3 className="font-bold text-gray-800 mb-4">Registered Players ({roster.length})</h3>
+                <div className="space-y-2">
+                  {roster.map(p => (
+                    <div key={p.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                      <div className="flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-black text-gray-400">{p.jumper_number || '?'}</span>
+                        <div>
+                          <div className="text-sm font-semibold text-gray-800">{p.name}</div>
+                          {p.positions && <div className="text-xs text-gray-400">{p.positions}</div>}
+                        </div>
+                      </div>
+                      <Link to={`/${slug}/player/${p.id}`} className="text-xs club-text font-semibold hover:underline">Profile →</Link>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
-          {/* Posts */}
+          {/* Posts tab */}
           {tab === 'posts' && (
             <div className="space-y-5">
               <form onSubmit={addPost} className="card">
@@ -209,6 +253,7 @@ export default function Admin() {
                   {savingPost ? 'Posting...' : 'Post'}
                 </button>
               </form>
+
               <div className="card">
                 <h3 className="font-bold text-gray-800 mb-4">All Posts ({announcements.length})</h3>
                 <div className="space-y-3">
@@ -226,17 +271,18 @@ export default function Admin() {
             </div>
           )}
 
-          {/* Fees */}
+          {/* Fees tab */}
           {tab === 'fees' && (
             <div className="space-y-5">
-              <div className="grid sm:grid-cols-3 gap-4">
-                {[{ label: 'Fee Types', val: feeTypes.length, icon: '📋' },
-                  { label: 'Total Collected', val: '$' + feeTotals.totalCollected.toFixed(2), icon: '💰' },
-                  { label: 'Still Owing', val: '$' + feeTotals.totalOwing.toFixed(2), icon: '⚠️' }].map(({ label, val, icon }) => (
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { label: 'Fee Types', value: fees.length },
+                  { label: 'Collected', value: `$${feeRecords.filter(r => r.status === 'paid').reduce((s, r) => s + (r.amount_paid || 0), 0).toFixed(0)}` },
+                  { label: 'Owing', value: `$${feeRecords.filter(r => r.status === 'owing' || r.status === 'partial').reduce((s, r) => s + ((r.amount_due || 0) - (r.amount_paid || 0)), 0).toFixed(0)}` },
+                ].map(({ label, value }) => (
                   <div key={label} className="card text-center">
-                    <div className="text-2xl mb-1">{icon}</div>
-                    <div className="font-black text-xl text-gray-900">{val}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">{label}</div>
+                    <div className="text-2xl font-black club-text">{value}</div>
+                    <div className="text-xs text-gray-400 font-semibold mt-1">{label}</div>
                   </div>
                 ))}
               </div>
@@ -244,118 +290,102 @@ export default function Admin() {
               <form onSubmit={addFeeType} className="card">
                 <h3 className="font-bold text-gray-800 mb-4">Add Fee Type</h3>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  <input placeholder="Fee name (e.g. Season Registration)" value={newFeeType.name}
-                    onChange={e => setNewFeeType(f => ({ ...f, name: e.target.value }))}
+                  <input placeholder="Name (e.g. Season Rego)" value={newFee.name} onChange={e => setNewFee(f => ({ ...f, name: e.target.value }))}
                     className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
-                  <input placeholder="Amount ($)" type="number" value={newFeeType.amount}
-                    onChange={e => setNewFeeType(f => ({ ...f, amount: e.target.value }))}
+                  <input type="number" placeholder="Amount ($)" value={newFee.amount} onChange={e => setNewFee(f => ({ ...f, amount: e.target.value }))}
                     className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
-                  <input placeholder="Season (e.g. 2026)" value={newFeeType.season}
-                    onChange={e => setNewFeeType(f => ({ ...f, season: e.target.value }))}
+                  <input placeholder="Season (e.g. 2025)" value={newFee.season} onChange={e => setNewFee(f => ({ ...f, season: e.target.value }))}
                     className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
-                  <input type="date" placeholder="Due date" value={newFeeType.due_date}
-                    onChange={e => setNewFeeType(f => ({ ...f, due_date: e.target.value }))}
+                  <input type="date" placeholder="Due Date" value={newFee.due_date} onChange={e => setNewFee(f => ({ ...f, due_date: e.target.value }))}
                     className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
-                  <input placeholder="Description (optional)" value={newFeeType.description}
-                    onChange={e => setNewFeeType(f => ({ ...f, description: e.target.value }))}
-                    className="sm:col-span-2 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
                 </div>
-                <button type="submit" disabled={savingFee || !newFeeType.name || !newFeeType.amount}
+                <button type="submit" disabled={savingFee || !newFee.name || !newFee.amount}
                   className="mt-4 club-bg text-white px-6 py-2 rounded-lg text-sm font-bold disabled:opacity-40">
-                  {savingFee ? 'Adding...' : 'Add Fee'}
+                  {savingFee ? 'Adding...' : 'Add Fee Type'}
                 </button>
               </form>
 
-              {feeTypes.map(ft => {
-                const typeRecords = feeRecords.filter(r => r.fee_type_id === ft.id)
-                const paid = typeRecords.filter(r => r.status === 'paid' || r.status === 'waived').length
+              {fees.map(fee => {
+                const records = feeRecords.filter(r => r.fee_type_id === fee.id)
                 return (
-                  <div key={ft.id} className="card">
+                  <div key={fee.id} className="card">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <h3 className="font-bold text-gray-900">{ft.name}</h3>
-                        <p className="text-sm text-gray-400">${ft.amount} · {ft.season || 'All seasons'}{ft.due_date ? ' · Due ' + ft.due_date : ''}</p>
+                        <h3 className="font-bold text-gray-800">{fee.name}</h3>
+                        <div className="text-xs text-gray-400">${fee.amount} · {fee.season || 'No season'}{fee.due_date ? ` · Due ${fee.due_date}` : ''}</div>
                       </div>
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-lg font-semibold">{paid}/{typeRecords.length} paid</span>
+                      <span className="text-sm font-bold club-text">{records.filter(r => r.status === 'paid').length}/{roster.length} paid</span>
                     </div>
-                    {typeRecords.length === 0 ? (
-                      <p className="text-xs text-gray-400">No records yet.</p>
-                    ) : (
-                      <div className="space-y-1">
-                        {typeRecords.map(r => (
-                          <div key={r.id} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
-                            <span className="text-sm text-gray-800">{r.player_name}</span>
+                    <div className="space-y-1">
+                      {roster.map(player => {
+                        const rec = records.find(r => r.user_id === player.id)
+                        const status = rec?.status || 'owing'
+                        return (
+                          <div key={player.id} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
                             <div className="flex items-center gap-2">
-                              <span className={'text-xs px-2 py-0.5 rounded font-semibold ' + (r.status === 'paid' ? 'bg-green-100 text-green-700' : r.status === 'waived' ? 'bg-gray-100 text-gray-500' : r.status === 'partial' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-600')}>
-                                {r.status === 'paid' ? '✅ Paid' : r.status === 'waived' ? 'Waived' : r.status === 'partial' ? '½ Partial' : '⚠️ Owing'}
-                              </span>
-                              {r.status !== 'paid' && r.status !== 'waived' && (
-                                <button onClick={() => markPaid(ft.id, r.user_id)}
-                                  className="text-xs club-bg text-white px-2 py-0.5 rounded font-semibold hover:opacity-80">
-                                  Mark paid
-                                </button>
+                              <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-xs font-black text-gray-400">{player.jumper_number || '?'}</span>
+                              <span className="text-sm text-gray-700">{player.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${status==='paid'?'bg-green-100 text-green-700':status==='partial'?'bg-yellow-100 text-yellow-700':status==='waived'?'bg-gray-100 text-gray-500':'bg-red-50 text-red-600'}`}>{status}</span>
+                              {status !== 'paid' && status !== 'waived' && (
+                                <button onClick={() => markPaid(fee.id, player.id)}
+                                  className="text-xs club-bg text-white px-2 py-0.5 rounded font-semibold">Mark paid</button>
                               )}
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        )
+                      })}
+                    </div>
                   </div>
                 )
               })}
             </div>
           )}
 
-          {/* Availability */}
+          {/* Availability tab */}
           {tab === 'availability' && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-500">Player availability for upcoming fixtures. Use this to plan your team selection.</p>
+            <div className="space-y-5">
               {fixtures.filter(f => f.status === 'upcoming').length === 0 ? (
                 <div className="card text-center text-gray-400 py-12">No upcoming fixtures.</div>
-              ) : fixtures.filter(f => f.status === 'upcoming').map(f => {
-                const av = availability[f.id]
-                const players = av?.availability || []
-                return (
-                  <div key={f.id} className="card">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="font-bold text-gray-900">Rd {f.round} vs {f.opponent_name}</h3>
-                        <p className="text-xs text-gray-400 mt-0.5">{f.date ? new Date(f.date).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }) : 'Date TBC'}</p>
-                      </div>
-                      {av?.summary && (
-                        <div className="flex gap-3 text-sm font-bold">
-                          <span className="text-green-600">✅ {av.summary.available}</span>
-                          <span className="text-yellow-500">❓ {av.summary.maybe}</span>
-                          <span className="text-red-500">❌ {av.summary.unavailable}</span>
+              ) : (
+                fixtures.filter(f => f.status === 'upcoming').map(f => {
+                  const avail = availability[f.id] || {}
+                  const players = avail.players || []
+                  const summary = avail.summary || {}
+                  return (
+                    <div key={f.id} className="card">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h3 className="font-bold text-gray-800">Rd {f.round} vs {f.opponent_name}</h3>
+                          <div className="text-xs text-gray-400">{f.date || 'Date TBC'}</div>
                         </div>
-                      )}
-                    </div>
-                    {!av ? (
-                      <p className="text-xs text-gray-400">Loading...</p>
-                    ) : players.length === 0 ? (
-                      <p className="text-xs text-gray-400">No responses yet.</p>
-                    ) : (
-                      <div className="grid sm:grid-cols-2 gap-2">
+                        <div className="flex gap-2 text-xs font-semibold">
+                          <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✅ {summary.available || 0}</span>
+                          <span className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">❓ {summary.maybe || 0}</span>
+                          <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded-full">❌ {summary.unavailable || 0}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
                         {players.map(p => (
-                          <div key={p.user_id} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-gray-50">
-                            <span className="text-sm font-medium text-gray-800">{p.name}</span>
-                            <div className="flex items-center gap-1.5">
-                              {p.note && <span className="text-xs text-gray-400 italic max-w-[120px] truncate">{p.note}</span>}
-                              <span className={'text-xs px-2 py-0.5 rounded font-semibold ' + (p.status === 'available' ? 'bg-green-100 text-green-700' : p.status === 'unavailable' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-700')}>
-                                {p.status === 'available' ? '✅ In' : p.status === 'unavailable' ? '❌ Out' : '❓ Maybe'}
-                              </span>
+                          <div key={p.user_id} className="flex items-center justify-between py-1 border-b border-gray-50 last:border-0">
+                            <span className="text-sm text-gray-700">{p.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{p.status === 'available' ? '✅' : p.status === 'unavailable' ? '❌' : '❓'}</span>
+                              {p.note && <span className="text-xs text-gray-400 italic">"{p.note}"</span>}
                             </div>
                           </div>
                         ))}
+                        {players.length === 0 && <p className="text-xs text-gray-400">No responses yet.</p>}
                       </div>
-                    )}
-                  </div>
-                )
-              })}
+                    </div>
+                  )
+                })
+              )}
             </div>
           )}
 
-          {/* Sponsors */}
+          {/* Sponsors tab */}
           {tab === 'sponsors' && (
             <div className="card">
               <h3 className="font-bold text-gray-800 mb-4">Sponsors ({sponsors.length})</h3>
@@ -364,7 +394,9 @@ export default function Admin() {
                   <div key={s.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                     <div>
                       <span className="font-semibold text-sm text-gray-800">{s.name}</span>
-                      <span className={'ml-2 text-xs px-2 py-0.5 rounded-full font-semibold ' + (s.tier==='platinum'?'bg-gray-200 text-gray-700':s.tier==='gold'?'bg-yellow-100 text-yellow-700':s.tier==='silver'?'bg-gray-100 text-gray-500':'bg-orange-50 text-orange-600')}>{s.tier}</span>
+                      <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-semibold ${
+                        s.tier==='platinum'?'bg-gray-200 text-gray-700':s.tier==='gold'?'bg-yellow-100 text-yellow-700':s.tier==='silver'?'bg-gray-100 text-gray-500':'bg-orange-50 text-orange-600'
+                      }`}>{s.tier}</span>
                     </div>
                     {s.contract_end && <span className="text-xs text-gray-400">Expires {s.contract_end}</span>}
                   </div>
