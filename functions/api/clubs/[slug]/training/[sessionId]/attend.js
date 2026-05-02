@@ -10,18 +10,15 @@ const AUTH = async (req, env) => {
 export async function onRequestPost({ params, request, env }) {
   const user = await AUTH(request, env)
   if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
-  const { slug, sessionId } = params
-  const { results: clubs } = await env.DB.prepare('SELECT id FROM clubs WHERE slug = ?').bind(slug).all()
-  if (!clubs.length) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
-  const clubId = clubs[0].id
+  const { sessionId } = params
   const { status, note } = await request.json()
   const valid = ['present', 'absent', 'injured', 'late']
   if (!valid.includes(status)) return new Response(JSON.stringify({ error: 'Invalid status' }), { status: 400 })
   await env.DB.prepare(
-    `INSERT INTO ch_attendance (session_id, user_id, club_id, status, note)
-     VALUES (?,?,?,?,?)
+    `INSERT INTO ch_attendance (session_id, user_id, status, note)
+     VALUES (?,?,?,?)
      ON CONFLICT(user_id, session_id) DO UPDATE SET status=excluded.status, note=excluded.note`
-  ).bind(sessionId, user.id, clubId, status, note || null).run()
+  ).bind(sessionId, user.id, status, note || null).run()
   return Response.json({ ok: true })
 }
 
