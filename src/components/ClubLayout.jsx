@@ -19,6 +19,7 @@ export default function ClubLayout({ club, children }) {
     { to: '/fixtures', label: 'Fixtures' },
     { to: '/roster', label: 'Roster' },
     { to: '/teams', label: 'Teams' },
+    { to: '/training', label: 'Training' },
     { to: '/news', label: 'News' },
     { to: '/events', label: 'Events' },
     { to: '/voting', label: 'B&F' },
