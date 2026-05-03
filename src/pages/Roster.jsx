@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom'
+import Avatar from '../components/Avatar.jsx'
 import { useState, useEffect } from 'react'
 import ClubLayout from '../components/ClubLayout.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
