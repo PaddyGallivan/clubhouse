@@ -25,6 +25,10 @@ export default function Admin() {
   const [clubFeatures, setClubFeatures] = useState({})
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsSaved, setSettingsSaved] = useState(false)
+  const [playhqConfig, setPlayhqConfig] = useState({ playhq_org_id: '', playhq_season_id: '' })
+  const [playhqSyncing, setPlayhqSyncing] = useState(false)
+  const [playhqResult, setPlayhqResult] = useState(null)
+  const [playhqSaving, setPlayhqSaving] = useState(false)
 // CSV Import
   const [importTab, setImportTab] = useState('fixtures')
   const [csvText, setCsvText] = useState('')
@@ -746,6 +750,91 @@ function parseCSVText(text) {
               </div>
             </div>
           )}
+          {/* PlayHQ Sync */}
+          <div className="card mt-5">
+            <h3 className="font-bold text-gray-800 mb-1">🏉 PlayHQ Fixture Sync</h3>
+            <p className="text-sm text-gray-400 mb-4">
+              Connect your club's PlayHQ competition to automatically import fixtures and results.
+              Find your IDs at <a href="https://www.playhq.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">playhq.com</a> — copy them from your season URL.
+            </p>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">PlayHQ Org ID</label>
+                <input
+                  type="text"
+                  className="input w-full text-sm font-mono"
+                  placeholder="e.g. abc12345-1234-..."
+                  value={playhqConfig.playhq_org_id}
+                  onChange={e => setPlayhqConfig(c => ({ ...c, playhq_org_id: e.target.value }))}
+                />
+                <p className="text-xs text-gray-400 mt-1">Your club's organisation ID in PlayHQ (filters games to your teams only)</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Season ID <span className="text-red-400">*</span></label>
+                <input
+                  type="text"
+                  className="input w-full text-sm font-mono"
+                  placeholder="e.g. def67890-5678-..."
+                  value={playhqConfig.playhq_season_id}
+                  onChange={e => setPlayhqConfig(c => ({ ...c, playhq_season_id: e.target.value }))}
+                />
+                <p className="text-xs text-gray-400 mt-1">The competition season ID — found in the URL when viewing your season on PlayHQ</p>
+              </div>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                className="btn btn-secondary text-sm"
+                disabled={playhqSaving}
+                onClick={async () => {
+                  setPlayhqSaving(true)
+                  try {
+                    await api.savePlayHQConfig(club.slug, playhqConfig)
+                    setPlayhqResult({ ok: true, message: 'Config saved!' })
+                  } catch (e) {
+                    setPlayhqResult({ error: e.message })
+                  } finally {
+                    setPlayhqSaving(false)
+                  }
+                }}>
+                {playhqSaving ? 'Saving…' : '💾 Save Config'}
+              </button>
+              <button
+                className="btn club-bg text-white text-sm"
+                disabled={playhqSyncing || !playhqConfig.playhq_season_id}
+                onClick={async () => {
+                  setPlayhqSyncing(true)
+                  setPlayhqResult(null)
+                  try {
+                    // Save config first, then sync
+                    await api.savePlayHQConfig(club.slug, playhqConfig)
+                    const result = await api.syncPlayHQ(club.slug, null)
+                    setPlayhqResult(result)
+                  } catch (e) {
+                    setPlayhqResult({ error: e.message })
+                  } finally {
+                    setPlayhqSyncing(false)
+                  }
+                }}>
+                {playhqSyncing ? '⏳ Syncing…' : '🔄 Sync Now'}
+              </button>
+            </div>
+            {playhqResult && (
+              <div className={`mt-4 rounded-xl p-3 text-sm ${playhqResult.error ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'}`}>
+                {playhqResult.error ? (
+                  <><span className="font-semibold">⚠️ Error: </span>{playhqResult.error}</>
+                ) : playhqResult.message ? (
+                  <span>✅ {playhqResult.message}</span>
+                ) : (
+                  <>
+                    <p className="font-semibold mb-1">✅ Sync complete — {playhqResult.season}</p>
+                    <p>Imported {playhqResult.inserted} new · Updated {playhqResult.updated} · Skipped {playhqResult.skipped}</p>
+                    {playhqResult.message && <p className="mt-1 text-xs">{playhqResult.message}</p>}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
 
 
 {/* Import tab */}
