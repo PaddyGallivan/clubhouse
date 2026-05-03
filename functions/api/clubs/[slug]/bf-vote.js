@@ -18,6 +18,12 @@ export async function onRequestGet({ params, request, env }) {
   const url = new URL(request.url)
   const round = url.searchParams.get('round')
   const clubId = await getClubId(env, slug)
+  // Verify user is a member of this club
+  const { results: mem } = await env.DB.prepare(
+    "SELECT role FROM ch_memberships WHERE user_id = ? AND club_id = ? AND status = 'active'"
+  ).bind(user.id, clubId, 'active').all()
+  if (!mem.length) return Response.json({ error: "Forbidden" }, { status: 403 })
+  const myRole = mem[0].role
   const { results } = await env.DB.prepare(
     'SELECT * FROM ch_bf_votes WHERE voter_id = ? AND club_id = ? AND round = ?'
   ).bind(user.id, clubId, round).all()
