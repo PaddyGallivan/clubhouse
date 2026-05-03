@@ -25,6 +25,7 @@ export default function Admin() {
   const [clubFeatures, setClubFeatures] = useState({})
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsSaved, setSettingsSaved] = useState(false)
+  const [bookmarkletCopied, setBookmarkletCopied] = useState(false)
   const [playhqConfig, setPlayhqConfig] = useState({ playhq_org_id: '', playhq_season_id: '' })
   const [playhqSyncing, setPlayhqSyncing] = useState(false)
   const [playhqResult, setPlayhqResult] = useState(null)
@@ -752,83 +753,60 @@ function parseCSVText(text) {
           )}
           {/* PlayHQ Sync */}
           <div className="card mt-5">
-            <h3 className="font-bold text-gray-800 mb-1">🏉 PlayHQ Fixture Sync</h3>
+            <h3 className="font-bold text-gray-800 mb-1">🏉 PlayHQ Sync</h3>
             <p className="text-sm text-gray-400 mb-4">
-              Connect your club's PlayHQ competition to automatically import fixtures and results.
-              Find your IDs at <a href="https://www.playhq.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">playhq.com</a> — copy them from your season URL.
+              Pull fixtures, results and ladder directly from PlayHQ into Clubhouse using the one-click bookmarklet below.
             </p>
-            <div className="space-y-3 mb-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">PlayHQ Org ID</label>
-                <input
-                  type="text"
-                  className="input w-full text-sm font-mono"
-                  placeholder="e.g. abc12345-1234-..."
-                  value={playhqConfig.playhq_org_id}
-                  onChange={e => setPlayhqConfig(c => ({ ...c, playhq_org_id: e.target.value }))}
-                />
-                <p className="text-xs text-gray-400 mt-1">Your club's organisation ID in PlayHQ (filters games to your teams only)</p>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Season ID <span className="text-red-400">*</span></label>
-                <input
-                  type="text"
-                  className="input w-full text-sm font-mono"
-                  placeholder="e.g. def67890-5678-..."
-                  value={playhqConfig.playhq_season_id}
-                  onChange={e => setPlayhqConfig(c => ({ ...c, playhq_season_id: e.target.value }))}
-                />
-                <p className="text-xs text-gray-400 mt-1">The competition season ID — found in the URL when viewing your season on PlayHQ</p>
+
+            {/* Step 1: bookmarklet */}
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-4">
+              <p className="text-sm font-semibold text-blue-800 mb-2">Step 1 — Add the bookmarklet to your browser</p>
+              <p className="text-xs text-blue-700 mb-3">Drag this button to your bookmarks bar, or right-click → Bookmark this link:</p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <a
+                  href={`javascript:(function(){const API='https://clubhouse-e5e.pages.dev/api';const t=prompt('Paste your Clubhouse token (from your profile):');if(!t)return;const s=prompt('Your club slug:','${club?.slug||''}');if(!s)return;function ps(str){if(!str)return[null,null];const m=str.toString().match(/(\d+)\s*[-–]\s*(\d+)/);return m?[parseInt(m[1]),parseInt(m[2])]:[null,null];}const fixtures=[];const ladder=[];document.querySelectorAll('[class*="GameCard"],[class*="fixture"],[class*="game-card"],article').forEach(card=>{const teams=card.querySelectorAll('[class*="TeamName"],[class*="team-name"],h3,h4');const dates=card.querySelectorAll('[class*="Date"],time');const venue=card.querySelector('[class*="Venue"],[class*="venue"]');const scores=card.querySelectorAll('[class*="Score"]');const roundEl=card.querySelector('[class*="Round"]');if(teams.length>=2){const s1=scores[0]?.textContent?.trim();const s2=scores[1]?.textContent?.trim();fixtures.push({opponent:teams[1]?.textContent?.trim()||teams[0]?.textContent?.trim(),is_home:true,date:dates[0]?.getAttribute('datetime')||dates[0]?.textContent?.trim(),venue:venue?.textContent?.trim(),round:roundEl?.textContent?.replace(/[^0-9]/g,'')||'',round_name:roundEl?.textContent?.trim(),score_us:s1&&/\d/.test(s1)?parseInt(s1):null,score_them:s2&&/\d/.test(s2)?parseInt(s2):null});}});document.querySelectorAll('tbody tr,[class*="LadderRow"]').forEach((row,i)=>{const cells=row.querySelectorAll('td,[class*="Cell"]');if(cells.length>=5){const arr=[...cells].map(c=>c.textContent.trim());ladder.push({position:parseInt(arr[0])||(i+1),team_name:arr[1],played:parseInt(arr[2])||null,won:parseInt(arr[3])||null,lost:parseInt(arr[4])||null,drawn:parseInt(arr[5])||null,points:parseInt(arr[6])||null,percentage:parseFloat(arr[7])||null});}});const total=fixtures.length+ladder.length;if(!total){alert('No data found. Make sure the page is fully loaded.');return;}if(!confirm('Found '+fixtures.length+' fixtures and '+ladder.length+' ladder rows. Send to Clubhouse?'))return;fetch(API+'/clubs/'+s+'/sync/scrape',{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({fixtures,ladder,competition:document.title})}).then(r=>r.json()).then(d=>{if(d.ok)alert('✅ Done! Fixtures: '+d.fixtures.inserted+' new, '+d.fixtures.updated+' updated. Ladder: '+d.ladder.inserted+' new, '+d.ladder.updated+' updated.');else alert('❌ '+( d.error||'Error'));}).catch(e=>alert('❌ '+e.message));})();`}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg cursor-move select-none shadow"
+                  onClick={e => { e.preventDefault(); alert('Drag this button to your bookmarks bar, or right-click it and choose "Bookmark this link".') }}
+                >
+                  🏉 Sync to Clubhouse
+                </a>
+                <button
+                  className="text-xs text-blue-600 underline"
+                  onClick={() => {
+                    const code = `javascript:(function(){const API='https://clubhouse-e5e.pages.dev/api';const t=prompt('Paste your Clubhouse token (from your profile):');if(!t)return;const s=prompt('Your club slug:','${club?.slug||''}');if(!s)return;const fixtures=[];const ladder=[];document.querySelectorAll('[class*="GameCard"],[class*="fixture"],article').forEach(card=>{const teams=card.querySelectorAll('[class*="TeamName"],h3,h4');const dates=card.querySelectorAll('[class*="Date"],time');const venue=card.querySelector('[class*="Venue"]');const scores=card.querySelectorAll('[class*="Score"]');const roundEl=card.querySelector('[class*="Round"]');if(teams.length>=2){const s1=scores[0]?.textContent?.trim();const s2=scores[1]?.textContent?.trim();fixtures.push({opponent:teams[1]?.textContent?.trim(),is_home:true,date:dates[0]?.getAttribute('datetime')||dates[0]?.textContent?.trim(),venue:venue?.textContent?.trim(),round:roundEl?.textContent?.replace(/[^0-9]/g,'')||'',score_us:s1&&/\d/.test(s1)?parseInt(s1):null,score_them:s2&&/\d/.test(s2)?parseInt(s2):null});}});document.querySelectorAll('tbody tr').forEach((row,i)=>{const cells=row.querySelectorAll('td');if(cells.length>=5){const arr=[...cells].map(c=>c.textContent.trim());ladder.push({position:parseInt(arr[0])||(i+1),team_name:arr[1],played:parseInt(arr[2])||null,won:parseInt(arr[3])||null,lost:parseInt(arr[4])||null,drawn:parseInt(arr[5])||null,points:parseInt(arr[6])||null,percentage:parseFloat(arr[7])||null});}});const total=fixtures.length+ladder.length;if(!total){alert('No data found.');return;}if(!confirm('Send '+fixtures.length+' fixtures and '+ladder.length+' ladder rows to Clubhouse?'))return;fetch(API+'/clubs/'+s+'/sync/scrape',{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({fixtures,ladder,competition:document.title})}).then(r=>r.json()).then(d=>{if(d.ok)alert('✅ Done! '+d.fixtures.inserted+' fixtures imported.');else alert('❌ '+(d.error||'Error'));}).catch(e=>alert('❌ '+e.message));})();`
+                    navigator.clipboard.writeText(code)
+                    setBookmarkletCopied(true)
+                    setTimeout(() => setBookmarkletCopied(false), 2000)
+                  }}
+                >
+                  {bookmarkletCopied ? '✅ Copied!' : 'Or copy as code'}
+                </button>
               </div>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                className="btn btn-secondary text-sm"
-                disabled={playhqSaving}
-                onClick={async () => {
-                  setPlayhqSaving(true)
-                  try {
-                    await api.savePlayHQConfig(club.slug, playhqConfig)
-                    setPlayhqResult({ ok: true, message: 'Config saved!' })
-                  } catch (e) {
-                    setPlayhqResult({ error: e.message })
-                  } finally {
-                    setPlayhqSaving(false)
-                  }
-                }}>
-                {playhqSaving ? 'Saving…' : '💾 Save Config'}
-              </button>
-              <button
-                className="btn club-bg text-white text-sm"
-                disabled={playhqSyncing || !playhqConfig.playhq_season_id}
-                onClick={async () => {
-                  setPlayhqSyncing(true)
-                  setPlayhqResult(null)
-                  try {
-                    // Save config first, then sync
-                    await api.savePlayHQConfig(club.slug, playhqConfig)
-                    const result = await api.syncPlayHQ(club.slug, null)
-                    setPlayhqResult(result)
-                  } catch (e) {
-                    setPlayhqResult({ error: e.message })
-                  } finally {
-                    setPlayhqSyncing(false)
-                  }
-                }}>
-                {playhqSyncing ? '⏳ Syncing…' : '🔄 Sync Now'}
-              </button>
+
+            {/* Step 2: usage */}
+            <div className="bg-gray-50 rounded-xl p-4 mb-4">
+              <p className="text-sm font-semibold text-gray-700 mb-2">Step 2 — Use it on PlayHQ</p>
+              <ol className="text-xs text-gray-600 space-y-1 list-decimal list-inside">
+                <li>Go to <a href="https://www.playhq.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">playhq.com</a> and open your fixtures, results, or ladder page</li>
+                <li>Wait for the page to fully load</li>
+                <li>Click the <strong>🏉 Sync to Clubhouse</strong> bookmark</li>
+                <li>Enter your Clubhouse token when prompted (find it in your Profile page)</li>
+                <li>Confirm the sync — done!</li>
+              </ol>
+              <p className="text-xs text-gray-400 mt-2">Works on fixtures, results, draw, and ladder pages. Run it on multiple pages to grab everything.</p>
             </div>
+
+            {/* Last sync status */}
             {playhqResult && (
-              <div className={`mt-4 rounded-xl p-3 text-sm ${playhqResult.error ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'}`}>
+              <div className={`rounded-xl p-3 text-sm ${playhqResult.error ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'}`}>
                 {playhqResult.error ? (
                   <><span className="font-semibold">⚠️ Error: </span>{playhqResult.error}</>
-                ) : playhqResult.message ? (
-                  <span>✅ {playhqResult.message}</span>
                 ) : (
                   <>
-                    <p className="font-semibold mb-1">✅ Sync complete — {playhqResult.season}</p>
-                    <p>Imported {playhqResult.inserted} new · Updated {playhqResult.updated} · Skipped {playhqResult.skipped}</p>
-                    {playhqResult.message && <p className="mt-1 text-xs">{playhqResult.message}</p>}
+                    <p className="font-semibold mb-1">✅ Last sync complete</p>
+                    <p>Fixtures: {playhqResult.fixtures?.inserted} new · {playhqResult.fixtures?.updated} updated</p>
+                    <p>Ladder: {playhqResult.ladder?.inserted} new · {playhqResult.ladder?.updated} updated</p>
                   </>
                 )}
               </div>
