@@ -11,6 +11,12 @@ export async function onRequestPost({ params, request, env }) {
   if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
   const { fixtureId } = params
   const { self_rating, effort, highlight, improve } = await request.json()
+  // Verify user is a member of this club
+  const { results: mem } = await env.DB.prepare(
+    "SELECT role FROM ch_memberships WHERE user_id = ? AND club_id = ? AND status = 'active'"
+  ).bind(user.id, clubId, 'active').all()
+  if (!mem.length) return Response.json({ error: "Forbidden" }, { status: 403 })
+  const myRole = mem[0].role
   await env.DB.prepare(
     `INSERT OR REPLACE INTO ch_player_feedback (user_id, fixture_id, self_rating, effort, highlight, improve) VALUES (?,?,?,?,?,?)`
   ).bind(user.id, fixtureId, self_rating, effort, highlight || null, improve || null).run()
