@@ -22,6 +22,9 @@ export default function Admin() {
   const [trainingSessions, setTrainingSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const me = getUser()
+  const [clubFeatures, setClubFeatures] = useState({})
+  const [savingSettings, setSavingSettings] = useState(false)
+  const [settingsSaved, setSettingsSaved] = useState(false)
 
   useEffect(() => {
     if (!isLoggedIn()) { navigate(`/${slug}/login`); return }
@@ -41,6 +44,7 @@ export default function Admin() {
       setFeeRecords(feesData.records || [])
       setTrainingSessions(trainingData.sessions || [])
       setLoading(false)
+      // features loaded separately
     }).catch(() => setLoading(false))
   }, [slug])
 
@@ -219,7 +223,25 @@ export default function Admin() {
     ['training','🏋️ Training'],
     ['availability','📡 Avail.'],
     ['sponsors','🤝 Sponsors'],
+    ['settings','⚙️ Settings'],
   ]
+
+  // Load features on mount
+  useEffect(() => {
+    if (isLoggedIn()) api.getClubFeatures(slug).then(d => setClubFeatures(d.features || {})).catch(() => {})
+  }, [slug])
+
+  async function toggleFeature(key) {
+    const updated = { ...clubFeatures, [key]: !clubFeatures[key] }
+    setClubFeatures(updated)
+    setSavingSettings(true)
+    try {
+      await api.updateClubFeatures(slug, updated)
+      setSettingsSaved(true)
+      setTimeout(() => setSettingsSaved(false), 3000)
+    } catch (err) { alert(err.message) }
+    setSavingSettings(false)
+  }
 
   return (
     <ClubLayout club={club}>
@@ -657,6 +679,43 @@ export default function Admin() {
                     <p className="font-semibold">Error</p><p>{notifyResult.error}</p>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+
+          {/* Settings tab */}
+          {tab === 'settings' && (
+            <div className="space-y-5">
+              <div className="card">
+                <h3 className="font-bold text-gray-800 mb-1">Feature Toggles</h3>
+                <p className="text-sm text-gray-400 mb-5">Turn features on or off for all members of {club?.name}. Changes take effect immediately.</p>
+                {settingsSaved && <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-sm text-green-700 font-semibold">✅ Settings saved!</div>}
+                <div className="space-y-3">
+                  {[
+                    ['ladder', '🏆 Ladder / Standings'],
+                    ['teams', '🏅 Teams'],
+                    ['training', '🏋️ Training'],
+                    ['events', '📅 Events & Calendar'],
+                    ['bf_voting', '⭐ Best & Fairest Voting'],
+                    ['matchday', '🎯 Match Day'],
+                    ['chat', '💬 Team Chat'],
+                    ['fees', '💳 Fees'],
+                    ['news', '📣 News / Announcements'],
+                    ['sponsors', '🤝 Sponsors'],
+                    ['push', '🔔 Push Notifications'],
+                  ].map(([key, label]) => (
+                    <div key={key} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                      <span className="text-sm font-medium text-gray-700">{label}</span>
+                      <button
+                        onClick={() => toggleFeature(key)}
+                        disabled={savingSettings}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-40 ${clubFeatures[key] ? 'club-bg' : 'bg-gray-200'}`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${clubFeatures[key] ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
