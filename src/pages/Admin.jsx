@@ -18,6 +18,7 @@ export default function Admin() {
   const [fees, setFees] = useState([])
   const [feeRecords, setFeeRecords] = useState([])
   const [availability, setAvailability] = useState({})
+  const [trainingSessions, setTrainingSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const me = getUser()
 
@@ -27,13 +28,15 @@ export default function Admin() {
       api.getFixtures(slug), api.getRoster(slug),
       api.getAnnouncements(slug), api.getSponsors(slug),
       api.getFees(slug).catch(() => ({ fee_types: [], records: [] })),
-    ]).then(([fd, rd, ad, sd, feesData]) => {
+      api.getTrainingSessions(slug).catch(() => ({ sessions: [] })),
+    ]).then(([fd, rd, ad, sd, feesData, trainingData]) => {
       setFixtures(fd.fixtures || [])
       setRoster(rd.roster || [])
       setAnnouncements(ad.announcements || [])
       setSponsors(sd.sponsors || [])
       setFees(feesData.fee_types || [])
       setFeeRecords(feesData.records || [])
+      setTrainingSessions(trainingData.sessions || [])
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [slug])
@@ -235,6 +238,40 @@ export default function Admin() {
             </div>
           )}
 
+
+          {/* Training tab */}
+          {tab === 'training' && (
+            <div className="space-y-5">
+              <form onSubmit={addSession} className="card">
+                <h3 className="font-bold text-gray-800 mb-4">Schedule Training Session</h3>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <input type="date" value={newSession.date} onChange={e => setNewSession(s => ({ ...s, date: e.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                  <input type="text" placeholder="Time (e.g. 6:30 PM)" value={newSession.time} onChange={e => setNewSession(s => ({ ...s, time: e.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                  <input type="text" placeholder="Venue" value={newSession.venue} onChange={e => setNewSession(s => ({ ...s, venue: e.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 sm:col-span-2" />
+                  <input type="text" placeholder="Session notes (optional)" value={newSession.notes} onChange={e => setNewSession(s => ({ ...s, notes: e.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                  <input type="text" placeholder="Drill notes (optional)" value={newSession.drill_notes} onChange={e => setNewSession(s => ({ ...s, drill_notes: e.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                </div>
+                <button type="submit" disabled={savingSession || !newSession.date} className="mt-4 club-bg text-white px-6 py-2 rounded-lg text-sm font-bold disabled:opacity-40">{savingSession ? 'Scheduling...' : '+ Schedule Session'}</button>
+              </form>
+              <div className="card overflow-x-auto">
+                <h3 className="font-bold text-gray-800 mb-4">All Sessions ({trainingSessions.length})</h3>
+                {trainingSessions.length === 0 ? <p className="text-gray-400 text-sm">No sessions scheduled yet.</p> : (
+                  <table className="w-full text-sm">
+                    <thead><tr className="text-left text-xs text-gray-400 border-b border-gray-100">{['Date','Time','Venue','Notes'].map(h=><th key={h} className="pb-2 pr-4">{h}</th>)}</tr></thead>
+                    <tbody>{[...trainingSessions].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>(
+                      <tr key={s.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
+                        <td className="py-2 pr-4 font-semibold">{new Date(s.date).toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})}</td>
+                        <td className="py-2 pr-4 text-gray-500">{s.time||'–'}</td>
+                        <td className="py-2 pr-4 text-gray-500">{s.venue||'–'}</td>
+                        <td className="py-2 pr-4 text-gray-400 text-xs italic">{s.notes||'–'}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Posts tab */}
           {tab === 'posts' && (
             <div className="space-y-5">
@@ -382,6 +419,38 @@ export default function Admin() {
                   )
                 })
               )}
+            </div>
+          )}
+
+
+          {/* Notifications tab */}
+          {tab === 'notify' && (
+            <div className="space-y-5">
+              <div className="card">
+                <h3 className="font-bold text-gray-800 mb-1">Push Notifications</h3>
+                <p className="text-xs text-gray-400 mb-5">Send a push notification to all club members who have enabled notifications. Their device will show the latest announcement from your club.</p>
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5 text-xs text-blue-700 space-y-1">
+                  <p className="font-semibold">Setup required (one-time)</p>
+                  <p>1. Generate VAPID keys: <code className="bg-blue-100 px-1 rounded">npx web-push generate-vapid-keys</code></p>
+                  <p>2. Add as CF secrets: <code className="bg-blue-100 px-1 rounded">VAPID_PUBLIC_KEY</code> and <code className="bg-blue-100 px-1 rounded">VAPID_PRIVATE_KEY</code></p>
+                  <p>3. Members opt-in via their Dashboard.</p>
+                </div>
+                <button onClick={sendPushNotification} disabled={notifyState === 'sending'}
+                  className="club-bg text-white px-6 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40 hover:opacity-90 transition-opacity">
+                  {notifyState === 'sending' ? '🔔 Sending…' : '🔔 Notify All Subscribers'}
+                </button>
+                {notifyState === 'done' && notifyResult && (
+                  <div className="mt-4 bg-green-50 border border-green-200 rounded-xl p-3 text-xs text-green-700">
+                    <p className="font-semibold">Push sent!</p>
+                    <p>Delivered to {notifyResult.sent} device{notifyResult.sent !== 1 ? 's' : ''}.{notifyResult.failed > 0 ? ` ${notifyResult.failed} failed.` : ''}{notifyResult.cleaned > 0 ? ` ${notifyResult.cleaned} expired subscriptions cleaned up.` : ''}</p>
+                  </div>
+                )}
+                {notifyState === 'error' && notifyResult && (
+                  <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
+                    <p className="font-semibold">Error</p><p>{notifyResult.error}</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
