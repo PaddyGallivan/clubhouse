@@ -1,3 +1,4 @@
+import Avatar from '../components/Avatar.jsx'
 import { useParams } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import ClubLayout from '../components/ClubLayout.jsx'
