@@ -10,6 +10,7 @@ const DEFAULT_FEATURES = {
   fees: true,
   news: true,
   sponsors: true,
+  stats: true,
 }
 
 const AUTH = async (req, env) => {
