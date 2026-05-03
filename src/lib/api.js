@@ -68,6 +68,15 @@ Object.assign(api, {
   addTeamMember: (slug, teamId, userId, jumperNumber) => req(`/clubs/${slug}/teams/${teamId}/roster`, { method: 'POST', body: JSON.stringify({ user_id: userId, jumper_number: jumperNumber }) }),
   removeTeamMember: (slug, teamId, userId) => req(`/clubs/${slug}/teams/${teamId}/roster`, { method: 'DELETE', body: JSON.stringify({ user_id: userId }) }),
   createTeam: (slug, data) => req(`/clubs/${slug}/teams`, { method: 'POST', body: JSON.stringify(data) }),
+  // Avatar upload
+  uploadAvatar: (slug, formData) => {
+    const token = localStorage.getItem('ch_token')
+    return fetch(`/api/clubs/${slug}/upload/avatar`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(new Error(e.error))))
+  },
   // Feature toggles
   getClubFeatures: (slug) => req(`/clubs/${slug}/settings`),
   updateClubFeatures: (slug, features) => req(`/clubs/${slug}/settings`, { method: 'PATCH', body: JSON.stringify(features) }),
