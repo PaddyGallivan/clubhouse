@@ -80,4 +80,8 @@ Object.assign(api, {
   // Feature toggles
   getClubFeatures: (slug) => req(`/clubs/${slug}/settings`),
   updateClubFeatures: (slug, features) => req(`/clubs/${slug}/settings`, { method: 'PATCH', body: JSON.stringify(features) }),
+  // PlayHQ sync
+  getPlayHQConfig: (slug) => req(`/clubs/${slug}/sync/playhq`),
+  savePlayHQConfig: (slug, data) => req(`/clubs/${slug}/sync/playhq`, { method: 'PATCH', body: JSON.stringify(data) }),
+  syncPlayHQ: (slug, apiKey) => req(`/clubs/${slug}/sync/playhq`, { method: 'POST', body: JSON.stringify({ api_key: apiKey }) }),
 })
