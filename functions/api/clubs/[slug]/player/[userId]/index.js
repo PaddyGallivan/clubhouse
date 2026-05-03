@@ -7,7 +7,7 @@ const AUTH = async (req, env) => {
   return results[0] || null
 }
 
-export async function onRequestGet({ params, request, env }) {
+export async function onRequestGet({ params, env }) {
   const user = await AUTH(request, env)
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
@@ -15,6 +15,13 @@ export async function onRequestGet({ params, request, env }) {
   const { results: clubs } = await env.DB.prepare('SELECT id FROM clubs WHERE slug = ?').bind(slug).all()
   if (!clubs.length) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
   const clubId = clubs[0].id
+
+  // Verify user is a member of this club
+  const { results: membership } = await env.DB.prepare(
+    'SELECT role FROM ch_memberships WHERE user_id = ? AND club_id = ? AND status = ?'
+  ).bind(user.id, clubId, 'active').all()
+  if (!membership.length) return Response.json({ error: 'Forbidden' }, { status: 403 })
+  const myRole = membership[0].role
   const { results: users } = await env.DB.prepare(
     `SELECT u.*, m.jumper_number, m.positions FROM ch_users u
      JOIN ch_memberships m ON m.user_id = u.id WHERE u.id = ? AND m.club_id = ?`
