@@ -64,4 +64,8 @@ Object.assign(api, {
   getVapidKey: (slug) => req(`/clubs/${slug}/push/vapid-key`),
   subscribePush: (slug, subscription) => req(`/clubs/${slug}/push/subscribe`, { method: 'POST', body: JSON.stringify(subscription) }),
   sendPush: (slug) => req(`/clubs/${slug}/push/send`, { method: 'POST', body: JSON.stringify({}) }),
+  // Team roster management
+  addTeamMember: (slug, teamId, userId, jumperNumber) => req(`/clubs/${slug}/teams/${teamId}/roster`, { method: 'POST', body: JSON.stringify({ user_id: userId, jumper_number: jumperNumber }) }),
+  removeTeamMember: (slug, teamId, userId) => req(`/clubs/${slug}/teams/${teamId}/roster`, { method: 'DELETE', body: JSON.stringify({ user_id: userId }) }),
+  createTeam: (slug, data) => req(`/clubs/${slug}/teams`, { method: 'POST', body: JSON.stringify(data) }),
 })
