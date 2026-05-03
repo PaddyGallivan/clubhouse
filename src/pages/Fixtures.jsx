@@ -137,6 +137,12 @@ export default function Fixtures() {
                       </div>
                       <div className={'text-xs font-semibold ' + (f.score_us > f.score_them ? 'text-green-600' : f.score_us < f.score_them ? 'text-red-500' : 'text-gray-500')}>
                         {f.score_us > f.score_them ? 'WIN' : f.score_us < f.score_them ? 'LOSS' : 'DRAW'}
+              {fx.status === 'played' && (
+                <Link to={`/club/${slug}/stats/entry/${fx.id}`}
+                  className="text-xs text-blue-500 hover:text-blue-700 font-medium">
+                  📊 Stats
+                </Link>
+              )}
                       </div>
                     </div>
                   ) : (
