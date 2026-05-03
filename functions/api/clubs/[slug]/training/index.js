@@ -1,4 +1,7 @@
 export async function onRequestGet({ params, env }) {
+  const user = await AUTH(request, env)
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
   const { results: clubs } = await env.DB.prepare('SELECT id FROM clubs WHERE slug = ?').bind(params.slug).all()
   if (!clubs.length) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
   const clubId = clubs[0].id
