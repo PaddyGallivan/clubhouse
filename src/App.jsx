@@ -21,6 +21,8 @@ import Training from './pages/Training.jsx'
 import Ladder from './pages/Ladder.jsx'
 import Superadmin from './pages/Superadmin.jsx'
 import Onboarding from './pages/Onboarding.jsx'
+import Privacy from './pages/Privacy.jsx'
+import Terms from './pages/Terms.jsx'
 import NotFound from './pages/NotFound.jsx'
 
 export default function App() {
@@ -29,6 +31,8 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/superadmin" element={<Superadmin />} />
       <Route path="/onboard" element={<Onboarding />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
       <Route path="/:slug" element={<ClubHome />} />
       <Route path="/:slug/fixtures" element={<Fixtures />} />
       <Route path="/:slug/roster" element={<Roster />} />
