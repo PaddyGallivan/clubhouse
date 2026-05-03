@@ -28,6 +28,7 @@ export default function ClubLayout({ club, children }) {
     { to: '', label: 'Home', feature: null },
     { to: '/fixtures', label: 'Fixtures', feature: null },
     { to: '/ladder', label: 'Ladder', feature: 'ladder' },
+      { to: '/stats/leaderboard', label: 'Stats', feature: 'stats' },
     { to: '/roster', label: 'Roster', feature: null },
     { to: '/teams', label: 'Teams', feature: 'teams' },
     { to: '/training', label: 'Training', feature: 'training' },
