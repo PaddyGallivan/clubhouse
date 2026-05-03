@@ -6,3 +6,7 @@ pages_build_output_dir = "dist"
 binding = "DB"
 database_name = "asgard-brain"
 database_id = "b6275cb4-9c0f-4649-ae6a-f1c2e70e940f"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "clubhouse-media"
