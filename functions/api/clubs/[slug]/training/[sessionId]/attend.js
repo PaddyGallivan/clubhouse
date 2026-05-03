@@ -14,6 +14,12 @@ export async function onRequestPost({ params, request, env }) {
   const { status, note } = await request.json()
   const valid = ['present', 'absent', 'injured', 'late']
   if (!valid.includes(status)) return new Response(JSON.stringify({ error: 'Invalid status' }), { status: 400 })
+  // Verify user is a member of this club
+  const { results: mem } = await env.DB.prepare(
+    "SELECT role FROM ch_memberships WHERE user_id = ? AND club_id = ? AND status = 'active'"
+  ).bind(user.id, clubId, 'active').all()
+  if (!mem.length) return Response.json({ error: "Forbidden" }, { status: 403 })
+  const myRole = mem[0].role
   await env.DB.prepare(
     `INSERT INTO ch_attendance (session_id, user_id, status, note)
      VALUES (?,?,?,?)
