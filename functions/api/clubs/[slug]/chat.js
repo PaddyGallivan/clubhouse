@@ -12,6 +12,8 @@ async function authed(request, env) {
 }
 
 export async function onRequestGet({ params, request, env }) {
+  const user = await authed(request, env)
+  if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
   const { slug } = params
   const url = new URL(request.url)
   const teamId = url.searchParams.get('team')
