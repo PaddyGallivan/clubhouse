@@ -84,4 +84,9 @@ Object.assign(api, {
   getPlayHQConfig: (slug) => req(`/clubs/${slug}/sync/playhq`),
   savePlayHQConfig: (slug, data) => req(`/clubs/${slug}/sync/playhq`, { method: 'PATCH', body: JSON.stringify(data) }),
   syncPlayHQ: (slug, apiKey) => req(`/clubs/${slug}/sync/playhq`, { method: 'POST', body: JSON.stringify({ api_key: apiKey }) }),
+  // Stats
+  getFixtureStats: (slug, fixtureId) => req(`/clubs/${slug}/fixtures/${fixtureId}/stats`),
+  saveFixtureStats: (slug, fixtureId, data) => req(`/clubs/${slug}/fixtures/${fixtureId}/stats`, { method: 'POST', body: JSON.stringify(data) }),
+  getPlayerStats: (slug, userId) => req(`/clubs/${slug}/stats/${userId}`),
+  getLeaderboard: (slug, stat) => req(`/clubs/${slug}/stats/leaderboard?stat=${stat}`),
 })
