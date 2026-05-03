@@ -25,6 +25,12 @@ export default function Admin() {
   const [clubFeatures, setClubFeatures] = useState({})
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsSaved, setSettingsSaved] = useState(false)
+// CSV Import
+  const [importTab, setImportTab] = useState('fixtures')
+  const [csvText, setCsvText] = useState('')
+  const [importPreview, setImportPreview] = useState(null)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState(null)
 
   useEffect(() => {
     if (!isLoggedIn()) { navigate(`/${slug}/login`); return }
@@ -224,12 +230,70 @@ export default function Admin() {
     ['availability','📡 Avail.'],
     ['sponsors','🤝 Sponsors'],
     ['settings','⚙️ Settings'],
+    ['import','📥 Import'],
   ]
 
   // Load features on mount
   useEffect(() => {
     if (isLoggedIn()) api.getClubFeatures(slug).then(d => setClubFeatures(d.features || {})).catch(() => {})
   }, [slug])
+
+function parseCSVText(text) {
+    const lines = text.trim().split(/\r?\n/)
+    if (lines.length < 2) return null
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_'))
+    const rows = lines.slice(1).map(line => {
+      const fields = []
+      let current = '', inQuote = false
+      for (const ch of line) {
+        if (ch === '"') { inQuote = !inQuote }
+        else if (ch === ',' && !inQuote) { fields.push(current.trim()); current = '' }
+        else { current += ch }
+      }
+      fields.push(current.trim())
+      return Object.fromEntries(headers.map((h, i) => [h, fields[i] || '']))
+    }).filter(r => Object.values(r).some(v => v))
+    return { headers, rows }
+  }
+
+  function handleCSVFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => { setCsvText(ev.target.result); setImportPreview(null); setImportResult(null) }
+    reader.readAsText(file)
+  }
+
+  async function previewImport() {
+    const parsed = parseCSVText(csvText)
+    if (!parsed) return alert('Could not parse CSV — check formatting')
+    setImportPreview(parsed)
+  }
+
+  async function runImport() {
+    const parsed = parseCSVText(csvText)
+    if (!parsed) return
+    setImporting(true); setImportResult(null)
+    try {
+      const token = localStorage.getItem('ch_token')
+      const res = await fetch(`/api/clubs/${slug}/import?type=${importTab}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ rows: parsed.rows }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setImportResult(data)
+      if (importTab === 'roster') {
+        const rd = await api.getRoster(slug)
+        setRoster(rd.roster || [])
+      } else {
+        const fd = await api.getFixtures(slug)
+        setFixtures(fd.fixtures || [])
+      }
+    } catch (err) { alert(err.message) }
+    setImporting(false)
+  }
 
   async function toggleFeature(key) {
     const updated = { ...clubFeatures, [key]: !clubFeatures[key] }
@@ -683,6 +747,99 @@ export default function Admin() {
             </div>
           )}
 
+
+{/* Import tab */}
+          {tab === 'import' && (
+            <div className="space-y-5">
+              <div className="card">
+                <h3 className="font-bold text-gray-800 mb-1">Bulk Import</h3>
+                <p className="text-sm text-gray-400 mb-4">Import fixtures or players from a CSV file. Existing records are updated, not duplicated.</p>
+
+                <div className="flex gap-2 mb-5">
+                  {[['fixtures','📅 Fixtures'],['roster','👥 Roster']].map(([id,label]) => (
+                    <button key={id} onClick={() => { setImportTab(id); setCsvText(''); setImportPreview(null); setImportResult(null) }}
+                      className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${importTab === id ? 'club-bg text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Column guide */}
+                <div className="bg-gray-50 rounded-xl p-3 mb-4 text-xs text-gray-500">
+                  <p className="font-semibold text-gray-700 mb-1">{importTab === 'fixtures' ? 'Fixtures CSV columns:' : 'Roster CSV columns:'}</p>
+                  {importTab === 'fixtures' ? (
+                    <p><code className="bg-white px-1 rounded border border-gray-200">round</code>, <code className="bg-white px-1 rounded border border-gray-200">opponent</code>, <code className="bg-white px-1 rounded border border-gray-200">date</code> (YYYY-MM-DD), <code className="bg-white px-1 rounded border border-gray-200">time</code>, <code className="bg-white px-1 rounded border border-gray-200">venue</code>, <code className="bg-white px-1 rounded border border-gray-200">home_away</code> (Home/Away), <code className="bg-white px-1 rounded border border-gray-200">score_us</code>, <code className="bg-white px-1 rounded border border-gray-200">score_them</code></p>
+                  ) : (
+                    <p><code className="bg-white px-1 rounded border border-gray-200">email</code> (required), <code className="bg-white px-1 rounded border border-gray-200">name</code>, <code className="bg-white px-1 rounded border border-gray-200">jumper</code>, <code className="bg-white px-1 rounded border border-gray-200">positions</code>, <code className="bg-white px-1 rounded border border-gray-200">role</code> (player/coach/committee)</p>
+                  )}
+                </div>
+
+                {/* File upload or paste */}
+                <div className="space-y-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-sm font-semibold text-gray-600">Upload CSV file</span>
+                    <input type="file" accept=".csv,text/csv" onChange={handleCSVFile} className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:club-bg file:text-white" />
+                  </label>
+                  <p className="text-xs text-gray-400">— or paste CSV below —</p>
+                  <textarea
+                    value={csvText}
+                    onChange={e => { setCsvText(e.target.value); setImportPreview(null); setImportResult(null) }}
+                    placeholder={importTab === 'fixtures' ? 'round,opponent,date,time,venue,home_away\n1,Carlton,2026-04-12,2:00 PM,Princes Park,Away' : 'email,name,jumper,positions\njohn@example.com,John Smith,12,CHF'}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono h-32 resize-y focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  />
+                </div>
+
+                <div className="flex gap-3 mt-4">
+                  <button onClick={previewImport} disabled={!csvText.trim()}
+                    className="px-5 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40">
+                    Preview
+                  </button>
+                  <button onClick={runImport} disabled={!csvText.trim() || importing}
+                    className="px-5 py-2 club-bg text-white rounded-lg text-sm font-bold disabled:opacity-40 hover:opacity-90">
+                    {importing ? 'Importing…' : `Import ${importTab}`}
+                  </button>
+                </div>
+              </div>
+
+              {/* Preview */}
+              {importPreview && (
+                <div className="card overflow-x-auto">
+                  <h3 className="font-bold text-gray-800 mb-3">Preview — {importPreview.rows.length} rows</h3>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left border-b border-gray-100">
+                        {importPreview.headers.map(h => <th key={h} className="pb-2 pr-4 text-gray-400 font-semibold uppercase">{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importPreview.rows.slice(0,5).map((row, i) => (
+                        <tr key={i} className="border-b border-gray-50 last:border-0">
+                          {importPreview.headers.map(h => <td key={h} className="py-1.5 pr-4 text-gray-600">{row[h] || '–'}</td>)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {importPreview.rows.length > 5 && (
+                    <p className="text-xs text-gray-400 mt-2">…and {importPreview.rows.length - 5} more rows</p>
+                  )}
+                </div>
+              )}
+
+              {/* Result */}
+              {importResult && (
+                <div className={`card ${importResult.imported > 0 ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                  <p className="font-bold text-gray-800 mb-1">Import complete</p>
+                  <p className="text-sm text-gray-600">✅ {importResult.imported} imported &nbsp;·&nbsp; ⏭️ {importResult.skipped} skipped</p>
+                  {importResult.errors?.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-xs font-semibold text-red-600 mb-1">Errors:</p>
+                      {importResult.errors.map((e, i) => <p key={i} className="text-xs text-red-500">{e}</p>)}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Settings tab */}
           {tab === 'settings' && (
