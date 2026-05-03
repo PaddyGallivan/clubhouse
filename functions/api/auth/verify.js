@@ -37,7 +37,7 @@ export async function onRequestPost({ request, env }) {
 
     // Create 30-day session
     const sessionToken = crypto.randomUUID().replace(/-/g,'') + crypto.randomUUID().replace(/-/g,'')
-    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
     await env.DB.prepare('INSERT INTO ch_sessions (user_id, token, expires_at) VALUES (?,?,?)').bind(user.id, sessionToken, expires).run()
 
     const { results: memberships } = await env.DB.prepare(
