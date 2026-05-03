@@ -7,7 +7,7 @@ const AUTH = async (req, env) => {
   return results[0] || null
 }
 
-export async function onRequestGet({ params, env }) {
+export async function onRequestGet({ params, request, env }) {
   const user = await AUTH(request, env)
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
