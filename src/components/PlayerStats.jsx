@@ -83,7 +83,7 @@ export default function PlayerStats({ slug, userId, sport = 'afl' }) {
               {data.games?.map(g => (
                 <tr key={g.fixture_id} className="border-b border-gray-50">
                   <td className="py-2 pr-3">
-                    <p className="font-medium text-gray-700">{g.is_home ? 'vs' : '@'} {g.opponent}</p>
+                    <p className="font-medium text-gray-700">{g.is_home ? 'vs' : '@'} {g.opponent_name || g.opponent}</p>
                     <p className="text-gray-400">R{g.round} · {g.score_us ?? '?'}-{g.score_them ?? '?'}</p>
                   </td>
                   {activeKeys.filter(([k]) => data.games?.some(gg => gg.stats[k] != null))
