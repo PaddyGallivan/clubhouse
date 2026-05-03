@@ -12,6 +12,12 @@ export async function onRequestGet({ params, env }) {
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
   const { slug } = params
+  // Verify user is a member of this club
+  const { results: mem } = await env.DB.prepare(
+    "SELECT role FROM ch_memberships WHERE user_id = ? AND club_id = ? AND status = 'active'"
+  ).bind(user.id, clubId, 'active').all()
+  if (!mem.length) return Response.json({ error: "Forbidden" }, { status: 403 })
+  const myRole = mem[0].role
   const { results: clubs } = await env.DB.prepare('SELECT id FROM clubs WHERE slug = ?').bind(slug).all()
   if (!clubs.length) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
   const { results } = await env.DB.prepare(
