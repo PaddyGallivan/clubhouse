@@ -7,24 +7,25 @@ const AUTH = async (req, env) => {
   return results[0] || null
 }
 
-export async function onRequestGet({ params, env }) {
+export async function onRequestGet({ params, request, env }) {
   const user = await AUTH(request, env)
-  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { slug } = params
-  // Verify user is a member of this club
+  const { results: clubs } = await env.DB.prepare('SELECT id FROM clubs WHERE slug = ?').bind(slug).all()
+  if (!clubs.length) return Response.json({ error: 'Not found' }, { status: 404 })
+  const clubId = clubs[0].id
+
   const { results: mem } = await env.DB.prepare(
     "SELECT role FROM ch_memberships WHERE user_id = ? AND club_id = ? AND status = 'active'"
-  ).bind(user.id, clubId, 'active').all()
-  if (!mem.length) return Response.json({ error: "Forbidden" }, { status: 403 })
-  const myRole = mem[0].role
-  const { results: clubs } = await env.DB.prepare('SELECT id FROM clubs WHERE slug = ?').bind(slug).all()
-  if (!clubs.length) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
+  ).bind(user.id, clubId).all()
+  if (!mem.length) return Response.json({ error: 'Forbidden' }, { status: 403 })
+
   const { results } = await env.DB.prepare(
     `SELECT u.id, u.name, u.avatar_url, m.jumper_number, m.positions, m.role
      FROM ch_memberships m JOIN ch_users u ON m.user_id = u.id
      WHERE m.club_id = ? AND m.role = 'player' AND m.status = 'active'
      ORDER BY m.jumper_number ASC`
-  ).bind(clubs[0].id).all()
+  ).bind(clubId).all()
   return Response.json({ roster: results })
 }
