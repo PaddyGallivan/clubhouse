@@ -1,4 +1,16 @@
+const AUTH = async (req, env) => {
+  const h = req.headers.get('Authorization')
+  if (!h?.startsWith('Bearer ')) return null
+  const { results } = await env.DB.prepare(
+    `SELECT u.* FROM ch_sessions s JOIN ch_users u ON s.user_id = u.id WHERE s.token = ? AND s.expires_at > datetime('now')`
+  ).bind(h.slice(7)).all()
+  return results[0] || null
+}
+
 export async function onRequestGet({ params, env }) {
+  const user = await AUTH(request, env)
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
   const { slug, teamId } = params
   const { results: clubs } = await env.DB.prepare('SELECT id FROM clubs WHERE slug = ?').bind(slug).all()
   if (!clubs.length) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
