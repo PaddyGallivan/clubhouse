@@ -1,3 +1,4 @@
+import PlayerStats from '../components/PlayerStats'
 import Avatar from '../components/Avatar.jsx'
 import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
@@ -47,6 +48,12 @@ export default function PlayerProfile() {
                 <span key={m.id} className="text-xs club-accent club-text px-2 py-0.5 rounded-full font-bold">🏅 {m.label}</span>
               ))}
             </div>
+
+              {/* Player Stats */}
+              <div className="card mt-4">
+                <h3 className="font-bold text-gray-800 mb-4">Season Stats</h3>
+                <PlayerStats slug={slug} userId={userId} sport={club?.sport || 'afl'} />
+              </div>
           )}
         </div>
       </div>
