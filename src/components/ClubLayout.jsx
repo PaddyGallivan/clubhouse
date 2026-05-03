@@ -2,6 +2,12 @@ import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { isLoggedIn, clearToken } from '../lib/auth.js'
 
+const DEFAULT_FEATURES = {
+  ladder: true, teams: true, training: true, events: true,
+  bf_voting: true, matchday: true, chat: true, push: true,
+  fees: true, news: true, sponsors: true,
+}
+
 export default function ClubLayout({ club, children }) {
   const { slug } = useParams()
   const navigate = useNavigate()
@@ -11,23 +17,29 @@ export default function ClubLayout({ club, children }) {
   const primary = club?.primary_colour || '#003087'
   const secondary = club?.secondary_colour || '#FFD700'
 
+  const features = club?.features
+    ? { ...DEFAULT_FEATURES, ...JSON.parse(club.features) }
+    : DEFAULT_FEATURES
+
   function handleLogout() { clearToken(); navigate(`/${slug}`) }
   function active(path) { return location.pathname === `/${slug}${path}` }
 
-  const navLinks = [
-    { to: '', label: 'Home' },
-    { to: '/fixtures', label: 'Fixtures' },
-    { to: '/ladder', label: 'Ladder' },
-    { to: '/roster', label: 'Roster' },
-    { to: '/teams', label: 'Teams' },
-    { to: '/training', label: 'Training' },
-    { to: '/news', label: 'News' },
-    { to: '/events', label: 'Events' },
-    { to: '/voting', label: 'B&F' },
-    { to: '/matchday', label: 'Match Day' },
-    { to: '/chat', label: 'Chat' },
-    { to: '/sponsors', label: 'Sponsors' },
+  const allNavLinks = [
+    { to: '', label: 'Home', feature: null },
+    { to: '/fixtures', label: 'Fixtures', feature: null },
+    { to: '/ladder', label: 'Ladder', feature: 'ladder' },
+    { to: '/roster', label: 'Roster', feature: null },
+    { to: '/teams', label: 'Teams', feature: 'teams' },
+    { to: '/training', label: 'Training', feature: 'training' },
+    { to: '/news', label: 'News', feature: 'news' },
+    { to: '/events', label: 'Events', feature: 'events' },
+    { to: '/voting', label: 'B&F', feature: 'bf_voting' },
+    { to: '/matchday', label: 'Match Day', feature: 'matchday' },
+    { to: '/chat', label: 'Chat', feature: 'chat' },
+    { to: '/sponsors', label: 'Sponsors', feature: 'sponsors' },
   ]
+
+  const navLinks = allNavLinks.filter(l => l.feature === null || features[l.feature])
 
   return (
     <div className="min-h-screen bg-gray-50">
