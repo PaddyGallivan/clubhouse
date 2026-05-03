@@ -68,7 +68,6 @@ Object.assign(api, {
   addTeamMember: (slug, teamId, userId, jumperNumber) => req(`/clubs/${slug}/teams/${teamId}/roster`, { method: 'POST', body: JSON.stringify({ user_id: userId, jumper_number: jumperNumber }) }),
   removeTeamMember: (slug, teamId, userId) => req(`/clubs/${slug}/teams/${teamId}/roster`, { method: 'DELETE', body: JSON.stringify({ user_id: userId }) }),
   createTeam: (slug, data) => req(`/clubs/${slug}/teams`, { method: 'POST', body: JSON.stringify(data) }),
-}
   // Feature toggles
   getClubFeatures: (slug) => req(`/clubs/${slug}/settings`),
   updateClubFeatures: (slug, features) => req(`/clubs/${slug}/settings`, { method: 'PATCH', body: JSON.stringify(features) }),
