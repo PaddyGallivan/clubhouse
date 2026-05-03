@@ -4,10 +4,9 @@ export async function onRequestPost({ request, env }) {
     if (!email) return new Response(JSON.stringify({ error: "Email required" }), { status: 400 })
 
     // Rate limit: max 3 magic links per email per 10 minutes
-    const windowStart = new Date(Date.now() - 10 * 60 * 1000).toISOString()
     const { results: recent } = await env.DB.prepare(
-      `SELECT COUNT(*) as cnt FROM ch_magic_links WHERE email = ? AND created_at > ?`
-    ).bind(email, windowStart).all()
+      `SELECT COUNT(*) as cnt FROM ch_magic_links WHERE email = ? AND created_at > datetime('now', '-10 minutes')`
+    ).bind(email).all()
     if (recent[0]?.cnt >= 3) {
       return new Response(JSON.stringify({ error: "Too many requests. Please wait a few minutes before trying again." }), { status: 429 })
     }
@@ -64,4 +63,3 @@ export async function onRequestPost({ request, env }) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500 })
   }
 }
-
