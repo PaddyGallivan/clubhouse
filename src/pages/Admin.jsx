@@ -928,6 +928,7 @@ function parseCSVText(text) {
                     ['news', '📣 News / Announcements'],
                     ['sponsors', '🤝 Sponsors'],
                     ['push', '🔔 Push Notifications'],
+                    ['stats', '📊 Player Stats & Leaderboard'],
                   ].map(([key, label]) => (
                     <div key={key} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                       <span className="text-sm font-medium text-gray-700">{label}</span>
