@@ -14,7 +14,6 @@ export async function onRequestGet({ params, request, env }) {
   const { results: clubs } = await env.DB.prepare('SELECT id FROM clubs WHERE slug = ?').bind(params.slug).all()
   if (!clubs.length) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
   const clubId = clubs[0].id
-  const user = await AUTH(request, env)
 
   // Fee types
   const { results: feeTypes } = await env.DB.prepare(
