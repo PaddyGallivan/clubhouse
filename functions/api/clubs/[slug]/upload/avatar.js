@@ -39,17 +39,15 @@ export async function onRequestPost({ params, request, env }) {
   const bytes = await file.arrayBuffer()
   if (bytes.byteLength > MAX_SIZE) return Response.json({ error: 'File too large (max 5MB)' }, { status: 413 })
 
-  // Determine extension
-  const ext = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'gif'
+  const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' }[file.type] || 'jpg'
   const key = `clubs/${slug}/avatars/${user.id}.${ext}`
 
   await env.MEDIA.put(key, bytes, { httpMetadata: { contentType: file.type } })
 
-  // Build public URL — R2 public bucket URL pattern
-  const baseUrl = env.MEDIA_URL || `https://pub-${env.CF_ACCOUNT_ID || 'unknown'}.r2.dev/clubhouse-media`
-  const avatarUrl = `${baseUrl}/${key}?v=${Date.now()}`
+  // URL served via our own media endpoint (no public R2 config needed)
+  const host = env.APP_URL || 'https://clubhouse-e5e.pages.dev'
+  const avatarUrl = `${host}/api/media/${key}?v=${Date.now()}`
 
-  // Save to user profile
   await env.DB.prepare('UPDATE ch_users SET avatar_url = ? WHERE id = ?').bind(avatarUrl, user.id).run()
 
   return Response.json({ ok: true, avatar_url: avatarUrl })
