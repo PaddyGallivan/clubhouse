@@ -72,6 +72,13 @@ export default function Login() {
         <div className="text-center mt-6">
           <a href={`/${slug}`} className="text-sm text-gray-400 hover:text-gray-600">← Back to {club?.short_name || 'club'}</a>
         </div>
+        <div className="text-center mt-4">
+          <span className="text-xs text-gray-300">
+            <a href="/privacy" className="hover:text-gray-500 transition-colors">Privacy Policy</a>
+            {' · '}
+            <a href="/terms" className="hover:text-gray-500 transition-colors">Terms of Service</a>
+          </span>
+        </div>
       </div>
     </div>
   )
