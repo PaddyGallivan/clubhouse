@@ -15,6 +15,13 @@ export async function onRequestPost({ params, request, env }) {
   const { email, role } = await request.json()
   if (!email) return new Response(JSON.stringify({ error: 'Email required' }), { status: 400 })
 
+  // Verify user is a member of this club
+  const { results: mem } = await env.DB.prepare(
+    "SELECT role FROM ch_memberships WHERE user_id = ? AND club_id = ? AND status = 'active'"
+  ).bind(user.id, clubId, 'active').all()
+  if (!mem.length) return Response.json({ error: "Forbidden" }, { status: 403 })
+  const myRole = mem[0].role
+  if (!["admin","committee"].includes(myRole)) return Response.json({ error: "Forbidden" }, { status: 403 })
   const { results: clubs } = await env.DB.prepare('SELECT * FROM clubs WHERE slug = ?').bind(slug).all()
   if (!clubs.length) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
   const club = clubs[0]
