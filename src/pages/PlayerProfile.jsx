@@ -49,11 +49,6 @@ export default function PlayerProfile() {
               ))}
             </div>
 
-              {/* Player Stats */}
-              <div className="card mt-4">
-                <h3 className="font-bold text-gray-800 mb-4">Season Stats</h3>
-                <PlayerStats slug={slug} userId={userId} sport={club?.sport || 'afl'} />
-              </div>
           )}
         </div>
       </div>
@@ -66,6 +61,12 @@ export default function PlayerProfile() {
             <div className="text-xs text-gray-400 mt-0.5">{label}</div>
           </div>
         ))}
+      </div>
+
+      {/* Player Stats */}
+      <div className="card mb-5">
+        <h3 className="font-bold text-gray-800 mb-4">📊 Season Stats</h3>
+        <PlayerStats slug={slug} userId={userId} sport="afl" />
       </div>
 
       {/* Tabs */}
