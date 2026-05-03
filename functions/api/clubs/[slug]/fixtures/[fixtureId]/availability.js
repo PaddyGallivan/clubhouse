@@ -17,6 +17,13 @@ export async function onRequestGet({ params, request, env }) {
   if (!clubs.length) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
   const clubId = clubs[0].id
 
+  // Verify user is a member of this club
+  const { results: membership } = await env.DB.prepare(
+    'SELECT role FROM ch_memberships WHERE user_id = ? AND club_id = ? AND status = ?'
+  ).bind(user.id, clubId, 'active').all()
+  if (!membership.length) return Response.json({ error: 'Forbidden' }, { status: 403 })
+  const myRole = membership[0].role
+
   const { results } = await env.DB.prepare(
     `SELECT a.*, u.name FROM ch_availability a
      JOIN ch_users u ON a.user_id = u.id
