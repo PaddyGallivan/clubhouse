@@ -12,7 +12,7 @@ export async function onRequestGet({ params, request, env }) {
     GROUP BY stat_key, sport ORDER BY sport, stat_key
   `).bind(userId, clubId).all()
   const { results: games } = await env.DB.prepare(`
-    SELECT f.id as fixture_id, f.opponent, f.date, f.round, f.is_home,
+    SELECT f.id as fixture_id, f.opponent_name as opponent, f.date, f.round, f.is_home,
            f.score_us, f.score_them, f.status, s.stat_key, s.stat_value, s.sport
     FROM ch_stats s
     JOIN ch_fixtures f ON f.id = s.fixture_id
