@@ -24,6 +24,8 @@ import Onboarding from './pages/Onboarding.jsx'
 import Privacy from './pages/Privacy.jsx'
 import Terms from './pages/Terms.jsx'
 import NotFound from './pages/NotFound.jsx'
+import StatsEntry from './pages/StatsEntry'
+import Leaderboard from './pages/Leaderboard'
 
 export default function App() {
   return (
