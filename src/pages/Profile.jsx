@@ -12,15 +12,40 @@ export default function Profile() {
   const [me, setMe] = useState(getUser())
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [jumperNumber, setJumperNumber] = useState('')
+  const [positions, setPositions] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (!isLoggedIn()) { navigate(`/${slug}/login`); return }
-    const user = getUser()
-    if (user) { setName(user.name || ''); setPhone(user.phone || '') }
-  }, [])
+    // Load fresh profile including memberships
+    api.getMe().then(data => {
+      const user = data.user
+      setMe(user)
+      setUser(user)
+      setName(user.name || '')
+      setPhone(user.phone || '')
+      // Load membership data for this club
+      const membership = user.memberships?.find(m => m.club_slug === slug)
+      if (membership) {
+        setJumperNumber(membership.jumper_number || '')
+        setPositions(membership.positions || '')
+      }
+    }).catch(() => {
+      const user = getUser()
+      if (user) {
+        setName(user.name || '')
+        setPhone(user.phone || '')
+        const membership = user.memberships?.find(m => m.club_slug === slug)
+        if (membership) {
+          setJumperNumber(membership.jumper_number || '')
+          setPositions(membership.positions || '')
+        }
+      }
+    })
+  }, [slug])
 
   async function handleSave(e) {
     e.preventDefault()
@@ -32,7 +57,13 @@ export default function Profile() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('ch_token')}`,
         },
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim() }),
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: phone.trim(),
+          club_slug: slug,
+          jumper_number: jumperNumber ? parseInt(jumperNumber) : null,
+          positions: positions.trim(),
+        }),
       })
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to save')
       const data = await res.json()
@@ -49,6 +80,8 @@ export default function Profile() {
     navigate(`/${slug}`)
   }
 
+  const myMembership = me?.memberships?.find(m => m.club_slug === slug)
+
   return (
     <ClubLayout club={club}>
       <div className="max-w-md mx-auto">
@@ -57,7 +90,7 @@ export default function Profile() {
           <p className="text-gray-500 mt-1">Update your details</p>
         </div>
 
-        {/* Avatar placeholder */}
+        {/* Avatar + summary */}
         <div className="card mb-6 flex items-center gap-4">
           <div className="w-16 h-16 rounded-full club-bg flex items-center justify-center text-white text-2xl font-black">
             {(name || me?.name || '?').charAt(0).toUpperCase()}
@@ -65,6 +98,14 @@ export default function Profile() {
           <div>
             <p className="font-bold text-gray-900">{name || me?.name || 'Member'}</p>
             <p className="text-sm text-gray-400">{me?.email}</p>
+            {myMembership && (
+              <div className="flex items-center gap-2 mt-1">
+                {myMembership.jumper_number && (
+                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-semibold">#{myMembership.jumper_number}</span>
+                )}
+                <span className="text-xs text-gray-400 capitalize">{myMembership.role}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -88,6 +129,39 @@ export default function Profile() {
               className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
             />
           </div>
+
+          {/* Club membership fields — only show if member of this club */}
+          {myMembership && (
+            <>
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">{club?.name || 'Club'} details</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Jumper #</label>
+                    <input
+                      value={jumperNumber}
+                      onChange={e => setJumperNumber(e.target.value.replace(/\D/g, ''))}
+                      placeholder="e.g. 12"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={3}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Positions</label>
+                    <input
+                      value={positions}
+                      onChange={e => setPositions(e.target.value)}
+                      placeholder="e.g. CHF, MID"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
           <div>
             <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Email</label>
             <input
